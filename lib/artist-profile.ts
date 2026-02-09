@@ -7,6 +7,7 @@ export type GenericRecord = Record<string, RecordValue>
 
 export type ArtistProfile = {
   id?: string
+  userId?: string
   username: string
   handle: string
   name: string
@@ -127,6 +128,20 @@ async function maybeReadTable(table: string, limit = 120): Promise<GenericRecord
 }
 
 function matchesArtistIdentity(record: GenericRecord, artist: ArtistProfile): boolean {
+  const recordOwnerIds = [
+    getStringByKeys(record, ["user_id", "owner_id", "artist_id", "profile_id"]),
+  ]
+    .filter(Boolean)
+    .map((v) => (v as string).toLowerCase())
+
+  const knownArtistIds = [artist.userId, artist.id]
+    .filter(Boolean)
+    .map((v) => (v as string).toLowerCase())
+
+  if (recordOwnerIds.length && knownArtistIds.length) {
+    if (recordOwnerIds.some((value) => knownArtistIds.includes(value))) return true
+  }
+
   const fields = [
     getStringByKeys(record, ["artist_handle", "artist_slug", "artist_username", "artist"]),
     getStringByKeys(record, ["artist_name", "vendor", "creator", "author"]),
@@ -149,6 +164,7 @@ function mapProfile(record: GenericRecord, username: string): ArtistProfile {
 
   return {
     id: getStringByKeys(record, ["id", "uuid"]),
+    userId: getStringByKeys(record, ["user_id", "userid", "owner_id"]),
     username,
     handle,
     name,
