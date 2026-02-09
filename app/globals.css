@@ -49,6 +49,8 @@
 
 :root {
   --radius: 0.625rem;
+  --colors-grey-default: #f6f6f5;
+  --colors-grey-dark: #e0e0e0;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -120,7 +122,29 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    @apply border-0 m-0 min-h-screen;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .typ-section-title {
+    @apply text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500;
+  }
+
+  .typ-caption {
+    @apply text-[11px] leading-relaxed;
+  }
+
+  .typ-body {
+    @apply text-base leading-relaxed text-neutral-900;
+  }
+
+  .typ-body-small {
+    @apply text-sm leading-relaxed;
   }
 }

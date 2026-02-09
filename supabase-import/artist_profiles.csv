@@ -1,0 +1,2 @@
+user_id,username,name,nationality,birth_year,bio_html,cover_image,cover_alt
+11111111-1111-1111-1111-111111111111,artistname,Artist Name,British,1989,"<p>Artist biography here.</p>",https://example.com/cover.jpg,Cover image

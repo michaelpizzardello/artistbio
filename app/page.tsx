@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-lime-300">
+    <main className="min-h-screen w-full bg-lime-300">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <div className="text-xl font-semibold">artistb.io</div>
 
