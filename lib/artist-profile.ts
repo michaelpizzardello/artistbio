@@ -11,8 +11,7 @@ export type ArtistProfile = {
   username: string
   handle: string
   name: string
-  nationality?: string
-  birthYear?: string
+  about?: string
   bioHtml?: string
   cover?: { url: string; alt?: string }
 }
@@ -168,8 +167,7 @@ function mapProfile(record: GenericRecord, username: string): ArtistProfile {
     username,
     handle,
     name,
-    nationality: getStringByKeys(record, ["nationality", "country", "origin"]),
-    birthYear: getStringByKeys(record, ["birth_year", "birthyear", "birth", "born"]),
+    about: getStringByKeys(record, ["about", "tagline", "subtitle", "bio", "description"]),
     bioHtml: toParagraphHtml(bio),
     cover: getImageByKeys(record, ["coverimage", "cover_image", "hero_image", "image_url", "image"]),
   }

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 
 export default function Page() {
   return (
@@ -9,10 +10,10 @@ export default function Page() {
 
         <div className="flex items-center gap-3">
           <Button asChild variant="secondary" className="rounded-full bg-white/70">
-            <a href="/login">Log in</a>
+            <Link href="/login">Log in</Link>
           </Button>
           <Button asChild className="rounded-full bg-black text-white hover:bg-black/90">
-            <a href="/signup">Sign up free</a>
+            <Link href="/signup">Sign up free</Link>
           </Button>
         </div>
       </header>
@@ -33,7 +34,7 @@ export default function Page() {
               placeholder="artistb.io/yourname"
             />
             <Button asChild className="h-14 rounded-2xl bg-green-900 text-lg hover:bg-green-900/90">
-              <a href="/signup">Get started for free</a>
+              <Link href="/signup">Get started for free</Link>
             </Button>
           </div>
         </div>

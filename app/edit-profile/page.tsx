@@ -1,12 +1,13 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import LoadingScreen from "@/components/ui/loading-screen"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const MEDIA_BUCKET = "artist-media"
@@ -14,6 +15,7 @@ const MEDIA_BUCKET = "artist-media"
 type ProfileForm = {
   username: string
   name: string
+  about: string
   coverUrl: string
   coverAlt: string
 }
@@ -21,6 +23,7 @@ type ProfileForm = {
 const emptyProfile: ProfileForm = {
   username: "",
   name: "",
+  about: "",
   coverUrl: "",
   coverAlt: "",
 }
@@ -36,6 +39,7 @@ function sanitizeFileName(name: string): string {
 }
 
 export default function EditProfilePage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,6 +82,7 @@ export default function EditProfilePage() {
         setProfile({
           username: str(profileRow.username || authUser.user_metadata?.username),
           name: str(profileRow.name || authUser.user_metadata?.full_name || authUser.email),
+          about: str(profileRow.about || profileRow.tagline || profileRow.bio_html || profileRow.bio),
           coverUrl: str(profileRow.cover_image || profileRow.cover_url),
           coverAlt: str(profileRow.cover_alt),
         })
@@ -85,6 +90,7 @@ export default function EditProfilePage() {
         setProfile({
           username: str(authUser.user_metadata?.username),
           name: str(authUser.user_metadata?.full_name || authUser.email),
+          about: "",
           coverUrl: "",
           coverAlt: "",
         })
@@ -149,6 +155,7 @@ export default function EditProfilePage() {
       user_id: user.id,
       username: profile.username.trim(),
       name: profile.name.trim(),
+      bio_html: profile.about.trim() || null,
       cover_image: profile.coverUrl.trim() || null,
       cover_alt: profile.coverAlt.trim() || null,
     }
@@ -166,24 +173,31 @@ export default function EditProfilePage() {
     setSaving(false)
   }
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    router.push("/app")
+  }
+
   if (loading) {
-    return (
-      <main className="min-h-screen bg-white px-4 py-8 text-[#1f251f]">
-        <p className="mx-auto max-w-lg text-center text-sm text-[#6b755f]">Loading profile...</p>
-      </main>
-    )
+    return <LoadingScreen message="Loading profile..." />
   }
 
   return (
     <main className="min-h-screen bg-white px-4 py-8 text-[#1f251f]">
       <div className="mx-auto max-w-lg">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Go back"
             className="rounded-full border border-transparent bg-[#f4f5f3] p-2 text-[#1f251f] transition hover:border-[#dfe3db]"
           >
             <ChevronLeft className="size-5" />
-          </Link>
+          </button>
           <h1 className="text-2xl font-bold">Edit profile</h1>
         </div>
 
@@ -214,9 +228,6 @@ export default function EditProfilePage() {
             {uploading ? <p className="text-xs text-[#6b755f]">Uploading…</p> : null}
           </div>
 
-        {error ? <p className="mt-4 rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700">{error}</p> : null}
-        {notice ? <p className="mt-4 rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800">{notice}</p> : null}
-
         <div className="mt-8 space-y-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6d766b]">Name</p>
@@ -234,6 +245,23 @@ export default function EditProfilePage() {
               onChange={(event) => setProfile((previous) => ({ ...previous, username: event.target.value }))}
             />
           </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6d766b]">About</p>
+            <textarea
+              placeholder="A short multiline tagline for your profile"
+              value={profile.about}
+              maxLength={150}
+              rows={4}
+              onChange={(event) =>
+                setProfile((previous) => ({
+                  ...previous,
+                  about: event.target.value.slice(0, 150),
+                }))
+              }
+              className="flex min-h-[104px] w-full rounded-md border border-[#dfe3db] bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-[#99a194] focus-visible:border-[#a9b3a4] focus-visible:ring-[3px] focus-visible:ring-[#e7ece3]"
+            />
+            <p className="mt-1 text-xs text-[#6b755f]">{profile.about.length}/150</p>
+          </div>
         </div>
 
         <Button
@@ -243,6 +271,8 @@ export default function EditProfilePage() {
         >
           {saving ? "Saving…" : "Save"}
         </Button>
+        {error ? <p className="mt-4 rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700">{error}</p> : null}
+        {notice ? <p className="mt-4 rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800">{notice}</p> : null}
       </div>
     </main>
   )

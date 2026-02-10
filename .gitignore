@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local accidental package/cache dirs
+/node_modules.bad*
+/.npm-cache

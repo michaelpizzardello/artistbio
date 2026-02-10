@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd"
@@ -10,6 +11,7 @@ import {
   Bell,
   Binoculars,
   CalendarDays,
+  ChevronLeft,
   GripVertical,
   ImagePlus,
   Link2,
@@ -22,6 +24,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import LoadingScreen from "@/components/ui/loading-screen"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type ProfileForm = {
@@ -71,6 +74,8 @@ type NewsForm = {
   url: string
   enabled: boolean
 }
+
+type DashboardSection = "all" | "artworks" | "exhibitions"
 
 const PROFILE_TABLE = "artist_profiles"
 const ARTWORK_TABLE = "artworks"
@@ -159,11 +164,12 @@ function mapExhibitionRow(row: Record<string, unknown>): ExhibitionForm {
   }
 }
 
-export default function ArtistDashboard() {
+export default function ArtistDashboard({ section = "all" }: { section?: DashboardSection }) {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploadingField, setUploadingField] = useState("")
+  const [, setUploadingField] = useState("")
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false)
   const [addSearchQuery, setAddSearchQuery] = useState("")
   const [draggingBlockKey, setDraggingBlockKey] = useState("")
@@ -257,55 +263,11 @@ export default function ArtistDashboard() {
     return () => window.clearTimeout(timeoutId)
   }, [allBlockKeys])
 
-  const saveProfile = async () => {
-    if (!user) return
-    const supabase = getSupabaseBrowserClient()
-    if (!supabase) return
-
-    setSaving(true)
-    setError("")
-    setNotice("")
-
-    const payload = {
-      user_id: user.id,
-      username: profile.username.trim(),
-      name: profile.name.trim(),
-      nationality: profile.nationality.trim() || null,
-      birth_year: profile.birthYear.trim() || null,
-      bio_html: profile.bioHtml.trim() || null,
-      cover_image: profile.coverUrl.trim() || null,
-      cover_alt: profile.coverAlt.trim() || null,
-      updated_at: new Date().toISOString(),
-    }
-
-    const { data: updatedRow, error: updateError } = await supabase
-      .from(PROFILE_TABLE)
-      .update(payload)
-      .eq("user_id", user.id)
-      .select("*")
-      .maybeSingle()
-
-    if (updateError) {
-      setSaving(false)
-      setError(updateError.message)
-      return
-    }
-
-    if (!updatedRow) {
-      const { data: insertedRow, error: insertError } = await supabase.from(PROFILE_TABLE).insert(payload).select("*").single()
-      if (insertError) {
-        setSaving(false)
-        setError(insertError.message)
-        return
-      }
-      setProfile(mapProfileRow(insertedRow as Record<string, unknown>))
-    } else {
-      setProfile(mapProfileRow(updatedRow as Record<string, unknown>))
-    }
-
-    setSaving(false)
-    setNotice("Profile saved.")
-  }
+  const visibleBlockKeys = useMemo(() => {
+    if (section === "all") return orderedBlockKeys
+    const prefix = section === "artworks" ? "artwork:" : "exhibition:"
+    return orderedBlockKeys.filter((key) => key.startsWith(prefix))
+  }, [orderedBlockKeys, section])
 
   const uploadImage = async (file: File, folder: string): Promise<string | null> => {
     if (!user) return null
@@ -327,18 +289,6 @@ export default function ArtistDashboard() {
 
     const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path)
     return data.publicUrl || null
-  }
-
-  const uploadProfileCover = async (file: File) => {
-    setUploadingField("profile-cover")
-    setError("")
-    setNotice("")
-    const publicUrl = await uploadImage(file, "profile")
-    if (publicUrl) {
-      setProfile((previous) => ({ ...previous, coverUrl: publicUrl }))
-      setNotice("Cover image uploaded.")
-    }
-    setUploadingField("")
   }
 
   const uploadExhibitionImage = async (index: number, file: File) => {
@@ -765,11 +715,7 @@ export default function ArtistDashboard() {
   }
 
   if (loading) {
-    return (
-      <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-6 py-12 text-[#182116]">
-        <p className="mx-auto max-w-5xl">Loading dashboard...</p>
-      </main>
-    )
+    return <LoadingScreen message="Loading dashboard..." />
   }
 
   if (!user) {
@@ -788,8 +734,17 @@ export default function ArtistDashboard() {
     )
   }
 
-  const profilePath = `/u/${profile.username.trim() || "yourname"}`
+  const profilePath = `/${profile.username.trim() || "yourname"}`
   const profileUrlLabel = `artistb.io${profilePath}`
+  const sectionTitle = section === "artworks" ? "Artworks" : section === "exhibitions" ? "Exhibitions" : "Artist Dashboard"
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    router.push("/app")
+  }
   const handleShareProfile = async () => {
     const shareUrl = `${window.location.origin}${profilePath}`
     try {
@@ -807,97 +762,173 @@ export default function ArtistDashboard() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-4 py-8 pb-32 text-[#182116]">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="relative size-[37px] shrink-0 overflow-hidden rounded-full border border-[#eceee8] bg-[#eef1e9]">
-              {profile.coverUrl ? (
-                <Image
-                  src={profile.coverUrl}
-                  alt={profile.coverAlt || `${profile.name.trim() || profile.username.trim() || "Artist"} profile image`}
-                  fill
-                  className="object-cover"
-                  sizes="37px"
-                />
-              ) : null}
+        {section === "all" ? (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="relative size-[37px] shrink-0 overflow-hidden rounded-full border border-[#eceee8] bg-[#eef1e9]">
+                  {profile.coverUrl ? (
+                    <Image
+                      src={profile.coverUrl}
+                      alt={profile.coverAlt || `${profile.name.trim() || profile.username.trim() || "Artist"} profile image`}
+                      fill
+                      className="object-cover"
+                      sizes="37px"
+                    />
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-[37px] min-w-0 rounded-full border border-[#cfcfcb] bg-transparent px-3 py-1 text-[14px] leading-none font-semibold tracking-[-0.005em] text-[#242b24] shadow-none"
+                >
+                  Try Pro for free
+                </Button>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button type="button" onClick={handleShareProfile} variant="ghost" className="size-11 p-0 text-[#1f2622] hover:bg-transparent">
+                  <Share2 className="size-6 stroke-[1.9]" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="size-11 p-0 text-[#1f2622] hover:bg-transparent"
+                  aria-label="Notifications"
+                >
+                  <Bell className="size-6 stroke-[1.9]" />
+                </Button>
+              </div>
             </div>
-            <Button
+            <h1 className="mt-4 text-[30px] font-black leading-[0.95] tracking-[-0.03em] text-[#1e2522]">
+              {profile.name.trim() || profile.username.trim() || "Artist Name"}
+            </h1>
+            <p className="mt-3 text-[18px] leading-none tracking-[-0.02em] text-[#2a312c]">{profileUrlLabel}</p>
+            <Button asChild type="button" variant="outline" className="mt-5 h-8 rounded-full border-[#cfcfcb] px-3 text-xs font-semibold text-[#242b24]">
+              <Link href="/edit-profile">Edit profile</Link>
+            </Button>
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
               type="button"
-              variant="outline"
-              className="h-[37px] min-w-0 rounded-full border border-[#cfcfcb] bg-transparent px-3 py-1 text-[14px] leading-none font-semibold tracking-[-0.005em] text-[#242b24] shadow-none"
+              onClick={handleBack}
+              aria-label="Go back"
+              className="rounded-full border border-transparent bg-[#f4f5f3] p-2 text-[#1f251f] transition hover:border-[#dfe3db]"
             >
-              Try Pro for free
-            </Button>
+              <ChevronLeft className="size-5" />
+            </button>
+            <h1 className="text-2xl font-bold text-[#1f251f]">{sectionTitle}</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button type="button" onClick={handleShareProfile} variant="ghost" className="size-11 p-0 text-[#1f2622] hover:bg-transparent">
-              <Share2 className="size-6 stroke-[1.9]" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="size-11 p-0 text-[#1f2622] hover:bg-transparent"
-              aria-label="Notifications"
-            >
-              <Bell className="size-6 stroke-[1.9]" />
-            </Button>
+        )}
+
+        {section === "all" ? (
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <Link href="/app/artworks" className="group rounded-[1.25rem]">
+              <div className="h-72 overflow-hidden rounded-[1.25rem] border border-[#d9ddd3] bg-white">
+                {artworks.length > 0 ? (
+                  <div className="pointer-events-none relative h-full w-full origin-top-left scale-[0.5] transform">
+                    <div style={{ transformOrigin: "left top", width: "200%", height: "200%", overflow: "hidden" }}>
+                      <section className="h-full w-full bg-white px-5 py-6">
+                        <h3 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-neutral-900">Artworks</h3>
+                        <div className="grid grid-cols-2 gap-5">
+                          {artworks.slice(0, 2).map((artwork) => (
+                            <article key={artwork.id}>
+                              <div className="relative overflow-hidden bg-[#f3f4ef]" style={{ aspectRatio: "4/5" }}>
+                                {artwork.imageUrl ? (
+                                  <Image
+                                    src={artwork.imageUrl}
+                                    alt={artwork.imageAlt || artwork.title || "Artwork preview"}
+                                    fill
+                                    sizes="220px"
+                                    className="object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="mt-3">
+                                <p className="truncate text-[11px] uppercase tracking-[0.14em] text-neutral-500">{artwork.medium || "Artwork"}</p>
+                                <p className="mt-1 truncate text-[14px] font-medium text-neutral-900">
+                                  <span className="italic">{artwork.title || "Untitled"}</span>
+                                  {artwork.year ? <span>, {artwork.year}</span> : null}
+                                </p>
+                                <p className="mt-1 truncate text-[12px] text-neutral-600">{artwork.priceLabel || "Price on request"}</p>
+                              </div>
+                            </article>
+                          ))}
+                          {artworks.length === 1 ? (
+                            <div className="flex items-center justify-center bg-[#f6f7f3]" style={{ aspectRatio: "4/5" }}>
+                              <p className="text-[12px] text-[#5d6758]">Add more artworks</p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center p-3 text-center text-xs text-[#5d6758]">No artworks yet</div>
+                )}
+              </div>
+              <p className="px-2 pt-2 text-base font-semibold text-[#1e2522]">Artworks</p>
+            </Link>
+
+            <Link href="/app/exhibitions" className="group rounded-[1.25rem]">
+              <div className="h-72 overflow-hidden rounded-[1.25rem] border border-[#d9ddd3] bg-white">
+                {exhibitions.length > 0 ? (
+                  <div className="pointer-events-none relative h-full w-full origin-top-left scale-[0.5] transform">
+                    <div style={{ transformOrigin: "left top", width: "200%", height: "200%", overflow: "hidden" }}>
+                      <section className="h-full w-full bg-white px-5 py-6">
+                        <h3 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-neutral-900">Exhibitions</h3>
+                        <div className="space-y-5">
+                          {exhibitions.slice(0, 2).map((exhibition) => (
+                            <article key={exhibition.id} className="grid grid-cols-[118px_minmax(0,1fr)] gap-4">
+                              <div className="relative aspect-[4/3] overflow-hidden bg-[#f3f4ef]">
+                                {exhibition.imageUrl ? (
+                                  <Image
+                                    src={exhibition.imageUrl}
+                                    alt={exhibition.imageAlt || exhibition.title || "Exhibition preview"}
+                                    fill
+                                    sizes="220px"
+                                    className="object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                              <div>
+                                <p className="text-[11px] uppercase tracking-[0.15em] text-neutral-500">Exhibition</p>
+                                <p className="mt-1 line-clamp-2 text-[15px] font-medium leading-snug text-neutral-900">
+                                  {exhibition.title || "Untitled exhibition"}
+                                </p>
+                                <p className="mt-1 text-[12px] text-neutral-600">{exhibition.location || "No location set"}</p>
+                                <p className="mt-1 text-[12px] text-neutral-500">
+                                  {exhibition.startDate || exhibition.endDate ? `${exhibition.startDate || ""}${exhibition.endDate ? ` - ${exhibition.endDate}` : ""}` : ""}
+                                </p>
+                              </div>
+                            </article>
+                          ))}
+                          {exhibitions.length === 1 ? (
+                            <div className="rounded-xl bg-[#f6f7f3] px-3 py-2 text-[12px] text-[#5d6758]">Add more exhibitions</div>
+                          ) : null}
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center p-3 text-center text-xs text-[#5d6758]">No exhibitions yet</div>
+                )}
+              </div>
+              <p className="px-2 pt-2 text-base font-semibold text-[#1e2522]">Exhibitions</p>
+            </Link>
           </div>
-        </div>
-        <h1 className="mt-4 text-[30px] font-black leading-[0.95] tracking-[-0.03em] text-[#1e2522]">
-          {profile.name.trim() || profile.username.trim() || "Artist Name"}
-        </h1>
-        <p className="mt-3 text-[18px] leading-none tracking-[-0.02em] text-[#2a312c]">{profileUrlLabel}</p>
-        <Button asChild type="button" variant="outline" className="mt-5 h-8 rounded-full border-[#cfcfcb] px-3 text-xs font-semibold text-[#242b24]">
-          <Link href="/edit-profile">Edit profile</Link>
-        </Button>
+        ) : null}
       </div>
 
       {error ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700">{error}</p> : null}
       {notice ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800">{notice}</p> : null}
 
       <section className="mx-auto mt-6 max-w-6xl space-y-4">
-        <div className="rounded-2xl border border-[#dde2d7] bg-white p-4 md:p-5">
-          <div className="grid gap-3 md:grid-cols-1 md:items-center">
-            <div className="flex items-center justify-end gap-2">
-              <Button onClick={saveProfile} disabled={saving} className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]">
-                Save
-              </Button>
-            </div>
-          </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
-            <Input
-              placeholder="Display name"
-              value={profile.name}
-              onChange={(event) => setProfile((previous) => ({ ...previous, name: event.target.value }))}
-            />
-            <Input
-              placeholder="Nationality"
-              value={profile.nationality}
-              onChange={(event) => setProfile((previous) => ({ ...previous, nationality: event.target.value }))}
-            />
-            <Input
-              placeholder="Birth year"
-              value={profile.birthYear}
-              onChange={(event) => setProfile((previous) => ({ ...previous, birthYear: event.target.value }))}
-            />
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (!file) return
-                void uploadProfileCover(file)
-              }}
-            />
-          </div>
-          {profile.coverUrl ? <p className="mt-2 break-all text-xs text-[#52604f]">Profile image: {profile.coverUrl}</p> : null}
-          {uploadingField === "profile-cover" ? <p className="mt-1 text-xs text-[#52604f]">Uploading profile image...</p> : null}
-        </div>
-
         <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <Droppable droppableId="dashboard-blocks">
             {(droppableProvided) => (
               <div ref={droppableProvided.innerRef} {...droppableProvided.droppableProps} className="space-y-4">
-                {orderedBlockKeys.map((blockKey, listIndex) => {
+                {visibleBlockKeys.map((blockKey, listIndex) => {
                 const [type, id] = blockKey.split(":")
                 const isDragging = draggingBlockKey === blockKey
 
@@ -1435,26 +1466,30 @@ export default function ArtistDashboard() {
         </div>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
-        <div className="flex items-center gap-2 rounded-[28px] border border-[#d5d7d1] bg-white px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.14)]">
-          <button
-            type="button"
-            onClick={() => setIsAddSheetOpen(true)}
-            className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-lg font-medium text-[#1f251f] hover:bg-[#f3f4ef]"
-          >
-            <Plus className="size-6" />
-            Add
-          </button>
-          <Link
-            href={profilePath}
-            target="_blank"
-            className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-lg font-medium text-[#1f251f] hover:bg-[#f3f4ef]"
-          >
-            <Binoculars className="size-6" />
-            Preview
-          </Link>
+      {section === "all" ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#d5d7d1] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+          <div className="mx-auto grid h-12 w-full max-w-md grid-cols-2 px-3">
+            <button
+              type="button"
+              onClick={() => setIsAddSheetOpen(true)}
+              className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[#1f251f] hover:bg-[#f3f4ef]"
+              aria-label="Add"
+            >
+              <Plus className="size-6" />
+              <span className="text-[10px] font-medium leading-none">Add</span>
+            </button>
+            <Link
+              href={profilePath}
+              target="_blank"
+              className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[#1f251f] hover:bg-[#f3f4ef]"
+              aria-label="Preview"
+            >
+              <Binoculars className="size-6" />
+              <span className="text-[10px] font-medium leading-none">Preview</span>
+            </Link>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {isAddSheetOpen ? (
         <div className="fixed inset-0 z-50 bg-black/35" onClick={() => setIsAddSheetOpen(false)}>

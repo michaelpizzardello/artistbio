@@ -3,8 +3,7 @@ import Container from "@/components/layout/Container"
 
 export type ArtistHeroProps = {
   name: string
-  nationality?: string | null
-  birthYear?: string | null
+  about?: string | null
   cover?: {
     url: string
     width?: number
@@ -13,16 +12,9 @@ export type ArtistHeroProps = {
   } | null
 }
 
-export default function ArtistHero({ name, nationality, birthYear, cover }: ArtistHeroProps) {
+export default function ArtistHero({ name, about, cover }: ArtistHeroProps) {
   const displayName = name.trim()
-  const trimmedNationality = nationality?.trim()
-  const trimmedBirthYear = birthYear?.trim()
-
-  const birthLine = (() => {
-    if (!trimmedBirthYear) return null
-    const lower = trimmedBirthYear.toLowerCase()
-    return lower.startsWith("b.") || lower.includes("born") ? trimmedBirthYear : `b. ${trimmedBirthYear}`
-  })()
+  const trimmedAbout = about?.trim()
 
   return (
     <section className="relative bg-gradient-to-b from-[var(--colors-grey-default,#f6f6f5)] via-[#fbfbfa] to-white">
@@ -55,10 +47,9 @@ export default function ArtistHero({ name, nationality, birthYear, cover }: Arti
             <h1 className="text-4xl font-light tracking-tight text-neutral-900 sm:text-5xl md:text-6xl">
               {displayName}
             </h1>
-            {trimmedNationality || birthLine ? (
-              <div className="mt-4 space-y-2 text-base text-neutral-600 sm:text-lg">
-                {trimmedNationality ? <p>{trimmedNationality}</p> : null}
-                {birthLine ? <p>{birthLine}</p> : null}
+            {trimmedAbout ? (
+              <div className="mt-4 text-base text-neutral-600 sm:text-lg">
+                <p className="whitespace-pre-line">{trimmedAbout}</p>
               </div>
             ) : null}
           </div>
