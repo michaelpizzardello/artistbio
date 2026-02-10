@@ -3,10 +3,11 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
+import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd"
 import {
   ArchiveX,
+  Bell,
   Binoculars,
   CalendarDays,
   GripVertical,
@@ -159,7 +160,6 @@ function mapExhibitionRow(row: Record<string, unknown>): ExhibitionForm {
 }
 
 export default function ArtistDashboard() {
-  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -167,7 +167,6 @@ export default function ArtistDashboard() {
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false)
   const [addSearchQuery, setAddSearchQuery] = useState("")
   const [draggingBlockKey, setDraggingBlockKey] = useState("")
-  const [touchDropBlockKey, setTouchDropBlockKey] = useState("")
   const [editingBlockKey, setEditingBlockKey] = useState("")
   const [expandedDeleteKey, setExpandedDeleteKey] = useState("")
   const [error, setError] = useState("")
@@ -571,13 +570,6 @@ export default function ArtistDashboard() {
     setNotice("Exhibition deleted.")
   }
 
-  const signOut = async () => {
-    const supabase = getSupabaseBrowserClient()
-    if (!supabase) return
-    await supabase.auth.signOut()
-    router.push("/login")
-  }
-
   const createArtworkDraft = () => {
     setArtworks((previous) => [
       {
@@ -636,15 +628,19 @@ export default function ArtistDashboard() {
     ])
   }
 
-  const moveBlock = (fromKey: string, toKey: string) => {
-    if (fromKey === toKey) return
+  const handleDragStart = (start: DragStart) => {
+    setDraggingBlockKey(start.draggableId)
+  }
+
+  const handleDragEnd = (result: DropResult) => {
+    setDraggingBlockKey("")
+    const { destination, source } = result
+    if (!destination || source.index === destination.index) return
     setOrderedBlockKeys((previous) => {
-      const from = previous.indexOf(fromKey)
-      const to = previous.indexOf(toKey)
-      if (from < 0 || to < 0) return previous
       const next = [...previous]
-      const [item] = next.splice(from, 1)
-      next.splice(to, 0, item)
+      const [item] = next.splice(source.index, 1)
+      if (!item) return previous
+      next.splice(destination.index, 0, item)
       return next
     })
   }
@@ -711,30 +707,6 @@ export default function ArtistDashboard() {
       setNewsItems((previous) => previous.filter((item) => item.id !== id))
       setNotice("News item deleted.")
     }
-  }
-
-  const handleTouchDragStart = (blockKey: string) => {
-    setDraggingBlockKey(blockKey)
-    setTouchDropBlockKey(blockKey)
-  }
-
-  const handleTouchDragMove = (event: React.TouchEvent) => {
-    if (!draggingBlockKey) return
-    event.preventDefault()
-    const touch = event.touches[0]
-    const target = document
-      .elementFromPoint(touch.clientX, touch.clientY)
-      ?.closest<HTMLElement>("[data-block-key]")
-    const nextKey = target?.dataset.blockKey || ""
-    if (nextKey) setTouchDropBlockKey(nextKey)
-  }
-
-  const handleTouchDragEnd = () => {
-    if (draggingBlockKey && touchDropBlockKey) {
-      moveBlock(draggingBlockKey, touchDropBlockKey)
-    }
-    setDraggingBlockKey("")
-    setTouchDropBlockKey("")
   }
 
   const renderDeleteDropdown = (blockKey: string) => {
@@ -818,16 +790,64 @@ export default function ArtistDashboard() {
 
   const profilePath = `/u/${profile.username.trim() || "yourname"}`
   const profileUrlLabel = `artistb.io${profilePath}`
+  const handleShareProfile = async () => {
+    const shareUrl = `${window.location.origin}${profilePath}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: profile.name.trim() || profile.username.trim() || "Artist Profile", url: shareUrl })
+        return
+      }
+      await navigator.clipboard.writeText(shareUrl)
+      setNotice("Profile link copied.")
+    } catch {
+      setError("Could not share profile right now.")
+    }
+  }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-4 py-8 pb-32 text-[#182116] sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black md:text-4xl">{profile.name.trim() || profile.username.trim() || "Artist Name"}</h1>
-          <p className="mt-1 text-sm text-[#52604f] md:text-base">{profileUrlLabel}</p>
+    <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-4 py-8 pb-32 text-[#182116]">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative size-[37px] shrink-0 overflow-hidden rounded-full border border-[#eceee8] bg-[#eef1e9]">
+              {profile.coverUrl ? (
+                <Image
+                  src={profile.coverUrl}
+                  alt={profile.coverAlt || `${profile.name.trim() || profile.username.trim() || "Artist"} profile image`}
+                  fill
+                  className="object-cover"
+                  sizes="37px"
+                />
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-[37px] min-w-0 rounded-full border border-[#cfcfcb] bg-transparent px-3 py-1 text-[14px] leading-none font-semibold tracking-[-0.005em] text-[#242b24] shadow-none"
+            >
+              Try Pro for free
+            </Button>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button type="button" onClick={handleShareProfile} variant="ghost" className="size-11 p-0 text-[#1f2622] hover:bg-transparent">
+              <Share2 className="size-6 stroke-[1.9]" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="size-11 p-0 text-[#1f2622] hover:bg-transparent"
+              aria-label="Notifications"
+            >
+              <Bell className="size-6 stroke-[1.9]" />
+            </Button>
+          </div>
         </div>
-        <Button onClick={signOut} variant="outline" className="rounded-full">
-          Log out
+        <h1 className="mt-4 text-[30px] font-black leading-[0.95] tracking-[-0.03em] text-[#1e2522]">
+          {profile.name.trim() || profile.username.trim() || "Artist Name"}
+        </h1>
+        <p className="mt-3 text-[18px] leading-none tracking-[-0.02em] text-[#2a312c]">{profileUrlLabel}</p>
+        <Button asChild type="button" variant="outline" className="mt-5 h-8 rounded-full border-[#cfcfcb] px-3 text-xs font-semibold text-[#242b24]">
+          <Link href="/edit-profile">Edit profile</Link>
         </Button>
       </div>
 
@@ -836,18 +856,10 @@ export default function ArtistDashboard() {
 
       <section className="mx-auto mt-6 max-w-6xl space-y-4">
         <div className="rounded-2xl border border-[#dde2d7] bg-white p-4 md:p-5">
-          <div className="grid gap-3 md:grid-cols-[96px_1fr_auto] md:items-center">
-            <div className="size-20 rounded-full border border-[#e5e8de] bg-[#f5f7f2]" />
-            <div>
-              <p className="text-3xl font-bold tracking-tight">@{profile.username || "yourname"}</p>
-              <p className="mt-1 text-sm text-[#5f6758]">{profileUrlLabel}</p>
-            </div>
-            <div className="flex gap-2">
+          <div className="grid gap-3 md:grid-cols-1 md:items-center">
+            <div className="flex items-center justify-end gap-2">
               <Button onClick={saveProfile} disabled={saving} className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]">
                 Save
-              </Button>
-              <Button onClick={signOut} variant="outline" className="rounded-full">
-                Log out
               </Button>
             </div>
           </div>
@@ -881,285 +893,278 @@ export default function ArtistDashboard() {
           {uploadingField === "profile-cover" ? <p className="mt-1 text-xs text-[#52604f]">Uploading profile image...</p> : null}
         </div>
 
-        {orderedBlockKeys.map((blockKey) => {
-          const [type, id] = blockKey.split(":")
-          const isDragging = draggingBlockKey === blockKey
+        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <Droppable droppableId="dashboard-blocks">
+            {(droppableProvided) => (
+              <div ref={droppableProvided.innerRef} {...droppableProvided.droppableProps} className="space-y-4">
+                {orderedBlockKeys.map((blockKey, listIndex) => {
+                const [type, id] = blockKey.split(":")
+                const isDragging = draggingBlockKey === blockKey
 
-          if (type === "artwork") {
-            const index = artworks.findIndex((item) => item.id === id)
-            if (index === -1) return null
-            const artwork = artworks[index]
-            return (
-              <article
-                key={blockKey}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => moveBlock(draggingBlockKey, blockKey)}
-                data-block-key={blockKey}
-                className={`relative rounded-2xl border bg-white p-4 shadow-sm ${
-                  isDragging || touchDropBlockKey === blockKey ? "border-[#6a28ff]" : "border-[#dde2d7]"
-                }`}
-              >
-                <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[106px_minmax(0,1fr)]">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggingBlockKey(blockKey)}
-                    onDragEnd={() => setDraggingBlockKey("")}
-                    onTouchStart={() => handleTouchDragStart(blockKey)}
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
-                    className="touch-none absolute left-4 top-4 z-10 inline-flex h-7 w-7 -translate-x-1 -translate-y-1 items-center justify-center rounded-full border border-[#e3e7de] bg-white text-[#88917f] shadow-sm sm:h-8 sm:w-8"
-                  >
-                    <GripVertical className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingBlockKey(blockKey)}
-                    className="col-start-1 row-span-2 h-24 w-24 overflow-hidden rounded-2xl border border-[#e5e8df] bg-[#f4f6f1] sm:h-[106px] sm:w-[106px]"
-                  >
-                    {artwork.imageUrl ? (
-                      <Image
-                        src={artwork.imageUrl}
-                        alt={artwork.imageAlt || artwork.title || "Artwork image"}
-                        width={106}
-                        height={106}
-                        unoptimized
-                        className="h-full w-full object-cover"
-                      />
-                    ) : null}
-                  </button>
-                  <div className="col-start-2 min-w-0">
-                    <p className="text-[11px] uppercase tracking-[0.1em] text-[#6f7868]">Artwork</p>
-                    <button type="button" onClick={() => setEditingBlockKey(blockKey)} className="w-full text-left">
-                      <p className="mt-1 truncate text-lg font-semibold leading-tight text-[#1f251f]">
-                        {artwork.title || "Untitled artwork"}
-                      </p>
-                    </button>
-                    <p className="mt-1 truncate text-xs text-[#5e6858]">{artwork.year || "No year"} · {artwork.medium || "No medium"}</p>
-                    <p className="mt-2 text-sm font-semibold text-[#1f251f]">{artwork.priceLabel || "Price on request"}</p>
-                  </div>
-                  <div className="col-start-2 flex items-end justify-end gap-1.5 self-end">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const shareUrl = `${window.location.origin}${profilePath}`
-                        try {
-                          if (navigator.share) {
-                            await navigator.share({ title: artwork.title || "Artwork", url: shareUrl })
-                          } else {
-                            await navigator.clipboard.writeText(shareUrl)
-                          }
-                          setNotice("Artwork link copied.")
-                        } catch {
-                          setError("Could not share artwork right now.")
-                        }
-                      }}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
-                      aria-label="Share artwork"
-                    >
-                      <Share2 className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
-                      aria-label="Delete artwork"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setArtworks((previous) =>
-                          previous.map((item, i) => (i === index ? { ...item, availableForSale: !item.availableForSale } : item))
-                        )
-                      }
-                      className={`h-7 w-11 rounded-full border px-1 transition ${
-                        artwork.availableForSale ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                      }`}
-                    >
-                      <span className={`block size-5 rounded-full bg-white transition ${artwork.availableForSale ? "ml-auto" : ""}`} />
-                    </button>
-                  </div>
-                </div>
-                {renderDeleteDropdown(blockKey)}
-              </article>
-            )
-          }
+                if (type === "artwork") {
+                  const index = artworks.findIndex((item) => item.id === id)
+                  if (index === -1) return null
+                  const artwork = artworks[index]
+                  return (
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                      {(draggableProvided) => (
+                        <article
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          data-block-key={blockKey}
+                          className={`relative rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
+                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
+                          }`}
+                          style={draggableProvided.draggableProps.style}
+                        >
+                          <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[106px_minmax(0,1fr)]">
+                            <button
+                              type="button"
+                              {...draggableProvided.dragHandleProps}
+                              className="touch-none absolute left-4 top-4 z-10 inline-flex h-7 w-7 -translate-x-1 -translate-y-1 items-center justify-center rounded-full border border-[#e3e7de] bg-white text-[#88917f] shadow-sm sm:h-8 sm:w-8"
+                            >
+                              <GripVertical className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingBlockKey(blockKey)}
+                              className="col-start-1 row-span-2 h-24 w-24 overflow-hidden rounded-2xl border border-[#e5e8df] bg-[#f4f6f1] sm:h-[106px] sm:w-[106px]"
+                            >
+                              {artwork.imageUrl ? (
+                                <Image
+                                  src={artwork.imageUrl}
+                                  alt={artwork.imageAlt || artwork.title || "Artwork image"}
+                                  width={106}
+                                  height={106}
+                                  unoptimized
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </button>
+                            <div className="col-start-2 min-w-0">
+                              <p className="text-[11px] uppercase tracking-[0.1em] text-[#6f7868]">Artwork</p>
+                              <button type="button" onClick={() => setEditingBlockKey(blockKey)} className="w-full text-left">
+                                <p className="mt-1 truncate text-lg font-semibold leading-tight text-[#1f251f]">
+                                  {artwork.title || "Untitled artwork"}
+                                </p>
+                              </button>
+                              <p className="mt-1 truncate text-xs text-[#5e6858]">{artwork.year || "No year"} · {artwork.medium || "No medium"}</p>
+                              <p className="mt-2 text-sm font-semibold text-[#1f251f]">{artwork.priceLabel || "Price on request"}</p>
+                            </div>
+                            <div className="col-start-2 flex items-end justify-end gap-1.5 self-end">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const shareUrl = `${window.location.origin}${profilePath}`
+                                  try {
+                                    if (navigator.share) {
+                                      await navigator.share({ title: artwork.title || "Artwork", url: shareUrl })
+                                    } else {
+                                      await navigator.clipboard.writeText(shareUrl)
+                                    }
+                                    setNotice("Artwork link copied.")
+                                  } catch {
+                                    setError("Could not share artwork right now.")
+                                  }
+                                }}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
+                                aria-label="Share artwork"
+                              >
+                                <Share2 className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
+                                aria-label="Delete artwork"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setArtworks((previous) =>
+                                    previous.map((item, i) => (i === index ? { ...item, availableForSale: !item.availableForSale } : item))
+                                  )
+                                }
+                                className={`h-7 w-11 rounded-full border px-1 transition ${
+                                  artwork.availableForSale ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
+                                }`}
+                              >
+                                <span className={`block size-5 rounded-full bg-white transition ${artwork.availableForSale ? "ml-auto" : ""}`} />
+                              </button>
+                            </div>
+                          </div>
+                          {renderDeleteDropdown(blockKey)}
+                        </article>
+                      )}
+                    </Draggable>
+                  )
+                }
 
-          if (type === "exhibition") {
-            const index = exhibitions.findIndex((item) => item.id === id)
-            if (index === -1) return null
-            const exhibition = exhibitions[index]
-            return (
-              <article
-                key={blockKey}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => moveBlock(draggingBlockKey, blockKey)}
-                data-block-key={blockKey}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  isDragging || touchDropBlockKey === blockKey ? "border-[#6a28ff]" : "border-[#dde2d7]"
-                }`}
-              >
-                <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggingBlockKey(blockKey)}
-                    onDragEnd={() => setDraggingBlockKey("")}
-                    onTouchStart={() => handleTouchDragStart(blockKey)}
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
-                    className="touch-none text-[#88917f]"
-                  >
-                    <GripVertical className="size-5" />
-                  </button>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Exhibition</p>
-                    <p className="mt-1 text-xl font-semibold text-[#1f251f]">{exhibition.title || "Untitled exhibition"}</p>
-                    <p className="mt-1 text-sm text-[#5e6858]">{exhibition.location || "No location"}</p>
-                  </div>
-                  <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExhibitions((previous) => previous.map((item, i) => (i === index ? { ...item, enabled: !item.enabled } : item)))
-                      }
-                      className={`h-9 w-14 rounded-full border px-1 transition ${
-                        exhibition.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                      }`}
-                    >
-                      <span className={`block size-6 rounded-full bg-white transition ${exhibition.enabled ? "ml-auto" : ""}`} />
-                    </button>
-                    <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
-                      Edit
-                    </Button>
-                    <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {renderDeleteDropdown(blockKey)}
-              </article>
-            )
-          }
+                if (type === "exhibition") {
+                  const index = exhibitions.findIndex((item) => item.id === id)
+                  if (index === -1) return null
+                  const exhibition = exhibitions[index]
+                  return (
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                      {(draggableProvided) => (
+                        <article
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          data-block-key={blockKey}
+                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
+                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
+                          }`}
+                          style={draggableProvided.draggableProps.style}
+                        >
+                          <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
+                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
+                              <GripVertical className="size-5" />
+                            </button>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Exhibition</p>
+                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{exhibition.title || "Untitled exhibition"}</p>
+                              <p className="mt-1 text-sm text-[#5e6858]">{exhibition.location || "No location"}</p>
+                            </div>
+                            <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExhibitions((previous) => previous.map((item, i) => (i === index ? { ...item, enabled: !item.enabled } : item)))
+                                }
+                                className={`h-9 w-14 rounded-full border px-1 transition ${
+                                  exhibition.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
+                                }`}
+                              >
+                                <span className={`block size-6 rounded-full bg-white transition ${exhibition.enabled ? "ml-auto" : ""}`} />
+                              </button>
+                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
+                                Edit
+                              </Button>
+                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {renderDeleteDropdown(blockKey)}
+                        </article>
+                      )}
+                    </Draggable>
+                  )
+                }
 
-          if (type === "link") {
-            const index = links.findIndex((item) => item.id === id)
-            if (index === -1) return null
-            const item = links[index]
-            return (
-              <article
-                key={blockKey}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => moveBlock(draggingBlockKey, blockKey)}
-                data-block-key={blockKey}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  isDragging || touchDropBlockKey === blockKey ? "border-[#6a28ff]" : "border-[#dde2d7]"
-                }`}
-              >
-                <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggingBlockKey(blockKey)}
-                    onDragEnd={() => setDraggingBlockKey("")}
-                    onTouchStart={() => handleTouchDragStart(blockKey)}
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
-                    className="touch-none text-[#88917f]"
-                  >
-                    <GripVertical className="size-5" />
-                  </button>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Link</p>
-                    <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled link"}</p>
-                    <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
-                  </div>
-                  <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
-                      }
-                      className={`h-9 w-14 rounded-full border px-1 transition ${
-                        item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                      }`}
-                    >
-                      <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
-                    </button>
-                    <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
-                      Edit
-                    </Button>
-                    <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {renderDeleteDropdown(blockKey)}
-              </article>
-            )
-          }
+                if (type === "link") {
+                  const index = links.findIndex((item) => item.id === id)
+                  if (index === -1) return null
+                  const item = links[index]
+                  return (
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                      {(draggableProvided) => (
+                        <article
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          data-block-key={blockKey}
+                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
+                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
+                          }`}
+                          style={draggableProvided.draggableProps.style}
+                        >
+                          <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
+                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
+                              <GripVertical className="size-5" />
+                            </button>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Link</p>
+                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled link"}</p>
+                              <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
+                            </div>
+                            <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
+                                }
+                                className={`h-9 w-14 rounded-full border px-1 transition ${
+                                  item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
+                                }`}
+                              >
+                                <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
+                              </button>
+                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
+                                Edit
+                              </Button>
+                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {renderDeleteDropdown(blockKey)}
+                        </article>
+                      )}
+                    </Draggable>
+                  )
+                }
 
-          if (type === "news") {
-            const index = newsItems.findIndex((item) => item.id === id)
-            if (index === -1) return null
-            const item = newsItems[index]
-            return (
-              <article
-                key={blockKey}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => moveBlock(draggingBlockKey, blockKey)}
-                data-block-key={blockKey}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  isDragging || touchDropBlockKey === blockKey ? "border-[#6a28ff]" : "border-[#dde2d7]"
-                }`}
-              >
-                <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggingBlockKey(blockKey)}
-                    onDragEnd={() => setDraggingBlockKey("")}
-                    onTouchStart={() => handleTouchDragStart(blockKey)}
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
-                    className="touch-none text-[#88917f]"
-                  >
-                    <GripVertical className="size-5" />
-                  </button>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">News</p>
-                    <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled news"}</p>
-                    <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
-                  </div>
-                  <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
-                      }
-                      className={`h-9 w-14 rounded-full border px-1 transition ${
-                        item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                      }`}
-                    >
-                      <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
-                    </button>
-                    <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
-                      Edit
-                    </Button>
-                    <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {renderDeleteDropdown(blockKey)}
-              </article>
-            )
-          }
+                if (type === "news") {
+                  const index = newsItems.findIndex((item) => item.id === id)
+                  if (index === -1) return null
+                  const item = newsItems[index]
+                  return (
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                      {(draggableProvided) => (
+                        <article
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          data-block-key={blockKey}
+                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
+                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
+                          }`}
+                          style={draggableProvided.draggableProps.style}
+                        >
+                          <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
+                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
+                              <GripVertical className="size-5" />
+                            </button>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">News</p>
+                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled news"}</p>
+                              <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
+                            </div>
+                            <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
+                                }
+                                className={`h-9 w-14 rounded-full border px-1 transition ${
+                                  item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
+                                }`}
+                              >
+                                <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
+                              </button>
+                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
+                                Edit
+                              </Button>
+                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {renderDeleteDropdown(blockKey)}
+                        </article>
+                      )}
+                    </Draggable>
+                  )
+                }
 
-          return null
-        })}
+                return null
+                })}
+                {droppableProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       </section>
 
       {editingBlockKey ? (
