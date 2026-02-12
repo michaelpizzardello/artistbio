@@ -1,8 +1,24 @@
+'use client'
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
+import { useMemo, useState } from "react"
 
 export default function Page() {
+  const [usernameInput, setUsernameInput] = useState("")
+
+  const signupHref = useMemo(() => {
+    const value = usernameInput.trim().toLowerCase()
+    if (!value) return "/signup"
+
+    const cleaned = value.replace(/^https?:\/\/(www\.)?/i, "").replace(/^artistb\.io\//i, "").replace(/^@/, "")
+    const username = cleaned.split("/")[0]
+    if (!username) return "/signup"
+
+    return `/signup?username=${encodeURIComponent(username)}`
+  }, [usernameInput])
+
   return (
     <main className="min-h-screen w-full bg-lime-300">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
@@ -32,9 +48,11 @@ export default function Page() {
             <Input
               className="h-14 rounded-2xl bg-white px-5 text-lg"
               placeholder="artistb.io/yourname"
+              value={usernameInput}
+              onChange={(event) => setUsernameInput(event.target.value)}
             />
             <Button asChild className="h-14 rounded-2xl bg-green-900 text-lg hover:bg-green-900/90">
-              <Link href="/signup">Get started for free</Link>
+              <Link href={signupHref}>Get started for free</Link>
             </Button>
           </div>
         </div>

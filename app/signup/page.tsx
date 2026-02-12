@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { FormEvent, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -25,8 +26,16 @@ const usernameRegex = /^[a-z0-9._]{3,24}$/
 type Step = "username" | "method" | "credentials"
 
 export default function Page() {
-  const [form, setForm] = useState<FormState>(initialFormState)
-  const [step, setStep] = useState<Step>("username")
+  const searchParams = useSearchParams()
+  const usernameFromQuery = (searchParams.get("username") || "").toLowerCase().trim()
+  const normalizedQueryUsername = usernameFromQuery.replace(/^@/, "")
+  const hasValidQueryUsername = usernameRegex.test(normalizedQueryUsername)
+
+  const [form, setForm] = useState<FormState>({
+    ...initialFormState,
+    username: hasValidQueryUsername ? normalizedQueryUsername : "",
+  })
+  const [step, setStep] = useState<Step>(hasValidQueryUsername ? "method" : "username")
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState("")
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle")
