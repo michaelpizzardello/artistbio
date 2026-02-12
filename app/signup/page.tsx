@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { FormEvent, useState } from "react"
-import { Apple, Chrome } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -57,32 +56,6 @@ export default function Page() {
   const goToCredentialsStep = () => {
     setError("")
     setStep("credentials")
-  }
-
-  const handleSocialSignup = (provider: "google" | "apple") => {
-    setError("")
-
-    const supabase = getSupabaseBrowserClient()
-    if (!supabase) {
-      setError("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.")
-      return
-    }
-
-    const queryParams = form.email ? { login_hint: form.email } : undefined
-
-    void supabase.auth
-      .signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?username=${encodeURIComponent(form.username)}`,
-          queryParams,
-        },
-      })
-      .then(({ error: oauthError }) => {
-        if (oauthError) {
-          setError(oauthError.message)
-        }
-      })
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -204,24 +177,6 @@ export default function Page() {
               className="h-14 w-full rounded-2xl bg-[#2a3b28] text-lg font-semibold text-white hover:bg-[#223120]"
             >
               Continue with email
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleSocialSignup("google")}
-              className="h-14 w-full rounded-2xl border-[#c9cec5] bg-white text-lg font-semibold text-[#1b2318] hover:bg-[#f5f7f1]"
-            >
-              <Chrome className="size-5" />
-              Continue with Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleSocialSignup("apple")}
-              className="h-14 w-full rounded-2xl border-[#c9cec5] bg-white text-lg font-semibold text-[#1b2318] hover:bg-[#f5f7f1]"
-            >
-              <Apple className="size-5" />
-              Continue with Apple
             </Button>
             <Button
               type="button"
