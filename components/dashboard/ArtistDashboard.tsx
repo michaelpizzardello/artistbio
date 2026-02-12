@@ -1,167 +1,51 @@
 'use client'
 
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd"
-import {
-  ArchiveX,
-  Bell,
-  Binoculars,
-  CalendarDays,
-  ChevronLeft,
-  GripVertical,
-  ImagePlus,
-  Link2,
-  Newspaper,
-  Plus,
-  Search,
-  Share2,
-  Trash2,
-  X,
-} from "lucide-react"
+import { ArchiveX, GripVertical, Trash2, X } from "lucide-react"
+import ArtworksMiniPreview from "@/components/dashboard/ArtworksMiniPreview"
+import DashboardAddSheet from "@/components/dashboard/DashboardAddSheet"
+import DashboardBottomNav from "@/components/dashboard/DashboardBottomNav"
+import DashboardMediaEditCard from "@/components/dashboard/DashboardMediaEditCard"
+import DashboardProfileHeader from "@/components/dashboard/DashboardProfileHeader"
+import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader"
+import DashboardToggleSwitch from "@/components/dashboard/DashboardToggleSwitch"
+import ExhibitionsMiniPreview from "@/components/dashboard/ExhibitionsMiniPreview"
+import SectionPreviewCard from "@/components/dashboard/SectionPreviewCard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoadingScreen from "@/components/ui/loading-screen"
+import {
+  createTempId,
+  emptyProfile,
+  mapArtworkRow,
+  mapExhibitionRow,
+  mapProfileRow,
+  sanitizeFileName,
+} from "@/lib/dashboard/mappers"
+import type { ArtworkForm, DashboardSection, ExhibitionForm, LinkForm, NewsForm, ProfileForm } from "@/lib/dashboard/types"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-
-type ProfileForm = {
-  username: string
-  name: string
-  nationality: string
-  birthYear: string
-  bioHtml: string
-  coverUrl: string
-  coverAlt: string
-}
-
-type ArtworkForm = {
-  id: string
-  title: string
-  year: string
-  medium: string
-  imageUrl: string
-  imageAlt: string
-  availableForSale: boolean
-  priceLabel: string
-}
-
-type ExhibitionForm = {
-  id: string
-  title: string
-  artist: string
-  location: string
-  summary: string
-  startDate: string
-  endDate: string
-  imageUrl: string
-  imageAlt: string
-  enabled: boolean
-}
-
-type LinkForm = {
-  id: string
-  title: string
-  url: string
-  enabled: boolean
-}
-
-type NewsForm = {
-  id: string
-  title: string
-  url: string
-  enabled: boolean
-}
-
-type DashboardSection = "all" | "artworks" | "exhibitions"
 
 const PROFILE_TABLE = "artist_profiles"
 const ARTWORK_TABLE = "artworks"
 const EXHIBITION_TABLE = "exhibitions"
 const MEDIA_BUCKET = "artist-media"
+const EXHIBITION_DRAFTS_STORAGE_KEY = "dashboard-exhibition-drafts"
 
-const emptyProfile: ProfileForm = {
-  username: "",
-  name: "",
-  nationality: "",
-  birthYear: "",
-  bioHtml: "",
-  coverUrl: "",
-  coverAlt: "",
-}
-
-function tempId(prefix: string) {
-  return `${prefix}-temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_")
-}
-
-function str(value: unknown): string {
-  if (typeof value === "string") return value
-  if (typeof value === "number") return String(value)
-  return ""
-}
-
-function bool(value: unknown): boolean {
-  if (typeof value === "boolean") return value
-  if (typeof value === "string") {
-    const lowered = value.trim().toLowerCase()
-    return lowered === "true" || lowered === "1"
-  }
-  if (typeof value === "number") return value === 1
-  return false
-}
-
-function toDateString(value: unknown): string {
-  if (!value) return ""
-  const raw = String(value)
-  const date = new Date(raw)
-  if (Number.isNaN(date.valueOf())) return ""
-  return date.toISOString().slice(0, 10)
-}
-
-function mapProfileRow(row: Record<string, unknown>): ProfileForm {
-  return {
-    username: str(row.username),
-    name: str(row.name || row.display_name),
-    nationality: str(row.nationality),
-    birthYear: str(row.birth_year),
-    bioHtml: str(row.bio_html || row.bio),
-    coverUrl: str(row.cover_image || row.cover_url || row.image_url),
-    coverAlt: str(row.cover_alt),
-  }
-}
-
-function mapArtworkRow(row: Record<string, unknown>): ArtworkForm {
-  return {
-    id: str(row.id) || tempId("artwork"),
-    title: str(row.title || row.name),
-    year: str(row.year),
-    medium: str(row.medium),
-    imageUrl: str(row.image_url || row.cover_image),
-    imageAlt: str(row.image_alt),
-    availableForSale: bool(row.available_for_sale),
-    priceLabel: str(row.price_label || row.price),
-  }
-}
-
-function mapExhibitionRow(row: Record<string, unknown>): ExhibitionForm {
-  return {
-    id: str(row.id) || tempId("exhibition"),
-    title: str(row.title || row.name),
-    artist: str(row.artist || row.artist_name),
-    location: str(row.location),
-    summary: str(row.summary || row.description),
-    startDate: toDateString(row.start_date || row.start),
-    endDate: toDateString(row.end_date || row.end),
-    imageUrl: str(row.hero_image || row.image_url),
-    imageAlt: str(row.hero_alt || row.image_alt),
-    enabled: true,
-  }
+function isExhibitionBlank(exhibition: ExhibitionForm): boolean {
+  return (
+    !exhibition.title.trim() &&
+    !exhibition.artist.trim() &&
+    !exhibition.location.trim() &&
+    !exhibition.summary.trim() &&
+    !exhibition.startDate.trim() &&
+    !exhibition.endDate.trim() &&
+    !exhibition.imageUrl.trim() &&
+    !exhibition.imageAlt.trim()
+  )
 }
 
 export default function ArtistDashboard({ section = "all" }: { section?: DashboardSection }) {
@@ -224,16 +108,74 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       }))
     }
 
-    if (Array.isArray(artworkRows)) {
-      setArtworks(artworkRows.map((row) => mapArtworkRow(row as Record<string, unknown>)))
+    const artworkList = Array.isArray(artworkRows) ? artworkRows.map((row) => mapArtworkRow(row as Record<string, unknown>)) : []
+    const exhibitionList = Array.isArray(exhibitionRows)
+      ? exhibitionRows.map((row) => mapExhibitionRow(row as Record<string, unknown>))
+      : []
+    const draftStorageKey = `${EXHIBITION_DRAFTS_STORAGE_KEY}:${authUser.id}`
+    let exhibitionDrafts: ExhibitionForm[] = []
+    try {
+      const rawDrafts = window.localStorage.getItem(draftStorageKey)
+      if (rawDrafts) {
+        const parsed = JSON.parse(rawDrafts) as ExhibitionForm[]
+        if (Array.isArray(parsed)) {
+          exhibitionDrafts = parsed
+            .filter((draft) => typeof draft?.id === "string" && draft.id.startsWith("exhibition-temp-"))
+            .filter((draft) => !isExhibitionBlank(draft))
+            .map((draft) => ({ ...draft, enabled: false }))
+        }
+      }
+    } catch {
+      exhibitionDrafts = []
+    }
+    const createType = window.sessionStorage.getItem("dashboard-create")
+    window.sessionStorage.removeItem("dashboard-create")
+
+    if (createType === "artwork" && section === "artworks") {
+      const id = createTempId("artwork")
+      setArtworks([
+        {
+          id,
+          title: "",
+          year: "",
+          medium: "",
+          imageUrl: "",
+          imageAlt: "",
+          availableForSale: true,
+          priceLabel: "",
+        },
+        ...artworkList,
+      ])
+      setEditingBlockKey(`artwork:${id}`)
+    } else {
+      setArtworks(artworkList)
     }
 
-    if (Array.isArray(exhibitionRows)) {
-      setExhibitions(exhibitionRows.map((row) => mapExhibitionRow(row as Record<string, unknown>)))
+    if (createType === "exhibition" && section === "exhibitions") {
+      const id = createTempId("exhibition")
+      setExhibitions([
+        {
+          id,
+          title: "",
+          artist: "",
+          location: "",
+          summary: "",
+          startDate: "",
+          endDate: "",
+          imageUrl: "",
+          imageAlt: "",
+          enabled: false,
+        },
+        ...exhibitionDrafts,
+        ...exhibitionList,
+      ])
+      setEditingBlockKey(`exhibition:${id}`)
+    } else {
+      setExhibitions([...exhibitionDrafts, ...exhibitionList])
     }
 
     setLoading(false)
-  }, [])
+  }, [section])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -262,6 +204,35 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [allBlockKeys])
+
+  useEffect(() => {
+    if (!expandedDeleteKey) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      const blockContainer = target.closest("[data-block-key]")
+      if (blockContainer?.getAttribute("data-block-key") === expandedDeleteKey) return
+      setExpandedDeleteKey("")
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    return () => document.removeEventListener("pointerdown", handlePointerDown)
+  }, [expandedDeleteKey])
+
+  useEffect(() => {
+    if (!user) return
+    const draftStorageKey = `${EXHIBITION_DRAFTS_STORAGE_KEY}:${user.id}`
+    const drafts = exhibitions
+      .filter((item) => item.id.startsWith("exhibition-temp-"))
+      .filter((item) => !isExhibitionBlank(item))
+      .map((item) => ({ ...item, enabled: false }))
+    if (drafts.length === 0) {
+      window.localStorage.removeItem(draftStorageKey)
+      return
+    }
+    window.localStorage.setItem(draftStorageKey, JSON.stringify(drafts))
+  }, [exhibitions, user])
 
   const visibleBlockKeys = useMemo(() => {
     if (section === "all") return orderedBlockKeys
@@ -413,15 +384,15 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     setUploadingField("")
   }
 
-  const saveExhibition = async (index: number) => {
-    if (!user) return
+  const saveExhibition = async (index: number): Promise<boolean> => {
+    if (!user) return false
     const supabase = getSupabaseBrowserClient()
-    if (!supabase) return
+    if (!supabase) return false
 
     const entry = exhibitions[index]
     if (!entry || !entry.title.trim()) {
       setError("Exhibition title is required.")
-      return
+      return false
     }
 
     setSaving(true)
@@ -447,7 +418,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       if (insertError) {
         setSaving(false)
         setError(insertError.message)
-        return
+        return false
       }
       setExhibitions((previous) =>
         previous.map((item, itemIndex) => (itemIndex === index ? mapExhibitionRow(data as Record<string, unknown>) : item))
@@ -464,7 +435,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       if (updateError) {
         setSaving(false)
         setError(updateError.message)
-        return
+        return false
       }
 
       setExhibitions((previous) =>
@@ -474,6 +445,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
 
     setSaving(false)
     setNotice("Exhibition saved.")
+    return true
   }
 
   const deleteArtwork = async (index: number) => {
@@ -520,10 +492,11 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     setNotice("Exhibition deleted.")
   }
 
-  const createArtworkDraft = () => {
+  const createArtworkDraft = useCallback(() => {
+    const id = createTempId("artwork")
     setArtworks((previous) => [
       {
-        id: tempId("artwork"),
+        id,
         title: "",
         year: "",
         medium: "",
@@ -534,12 +507,14 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       },
       ...previous,
     ])
-  }
+    return id
+  }, [])
 
-  const createExhibitionDraft = () => {
+  const createExhibitionDraft = useCallback(() => {
+    const id = createTempId("exhibition")
     setExhibitions((previous) => [
       {
-        id: tempId("exhibition"),
+        id,
         title: "",
         artist: "",
         location: "",
@@ -548,16 +523,17 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         endDate: "",
         imageUrl: "",
         imageAlt: "",
-        enabled: true,
+        enabled: false,
       },
       ...previous,
     ])
-  }
+    return id
+  }, [])
 
   const createLinkDraft = () => {
     setLinks((previous) => [
       {
-        id: tempId("link"),
+        id: createTempId("link"),
         title: "",
         url: addSearchQuery.trim(),
         enabled: true,
@@ -569,7 +545,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   const createNewsDraft = () => {
     setNewsItems((previous) => [
       {
-        id: tempId("news"),
+        id: createTempId("news"),
         title: "",
         url: addSearchQuery.trim(),
         enabled: true,
@@ -735,6 +711,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   }
 
   const profilePath = `/${profile.username.trim() || "yourname"}`
+  const previewPath = `/u/${profile.username.trim() || "yourname"}`
   const profileUrlLabel = `artistb.io${profilePath}`
   const sectionTitle = section === "artworks" ? "Artworks" : section === "exhibitions" ? "Exhibitions" : "Artist Dashboard"
   const handleBack = () => {
@@ -763,159 +740,29 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-4 py-8 pb-32 text-[#182116]">
       <div className="mx-auto max-w-6xl">
         {section === "all" ? (
-          <>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="relative size-[37px] shrink-0 overflow-hidden rounded-full border border-[#eceee8] bg-[#eef1e9]">
-                  {profile.coverUrl ? (
-                    <Image
-                      src={profile.coverUrl}
-                      alt={profile.coverAlt || `${profile.name.trim() || profile.username.trim() || "Artist"} profile image`}
-                      fill
-                      className="object-cover"
-                      sizes="37px"
-                    />
-                  ) : null}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-[37px] min-w-0 rounded-full border border-[#cfcfcb] bg-transparent px-3 py-1 text-[14px] leading-none font-semibold tracking-[-0.005em] text-[#242b24] shadow-none"
-                >
-                  Try Pro for free
-                </Button>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button type="button" onClick={handleShareProfile} variant="ghost" className="size-11 p-0 text-[#1f2622] hover:bg-transparent">
-                  <Share2 className="size-6 stroke-[1.9]" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="size-11 p-0 text-[#1f2622] hover:bg-transparent"
-                  aria-label="Notifications"
-                >
-                  <Bell className="size-6 stroke-[1.9]" />
-                </Button>
-              </div>
-            </div>
-            <h1 className="mt-4 text-[30px] font-black leading-[0.95] tracking-[-0.03em] text-[#1e2522]">
-              {profile.name.trim() || profile.username.trim() || "Artist Name"}
-            </h1>
-            <p className="mt-3 text-[18px] leading-none tracking-[-0.02em] text-[#2a312c]">{profileUrlLabel}</p>
-            <Button asChild type="button" variant="outline" className="mt-5 h-8 rounded-full border-[#cfcfcb] px-3 text-xs font-semibold text-[#242b24]">
-              <Link href="/edit-profile">Edit profile</Link>
-            </Button>
-          </>
+          <DashboardProfileHeader
+            coverUrl={profile.coverUrl}
+            coverAlt={profile.coverAlt}
+            name={profile.name}
+            username={profile.username}
+            profileUrlLabel={profileUrlLabel}
+            onShareProfile={() => {
+              void handleShareProfile()
+            }}
+          />
         ) : (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleBack}
-              aria-label="Go back"
-              className="rounded-full border border-transparent bg-[#f4f5f3] p-2 text-[#1f251f] transition hover:border-[#dfe3db]"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <h1 className="text-2xl font-bold text-[#1f251f]">{sectionTitle}</h1>
-          </div>
+          <DashboardSectionHeader title={sectionTitle} onBack={handleBack} />
         )}
 
         {section === "all" ? (
           <div className="mt-6 grid grid-cols-2 gap-4">
-            <Link href="/app/artworks" className="group rounded-[1.25rem]">
-              <div className="h-72 overflow-hidden rounded-[1.25rem] border border-[#d9ddd3] bg-white">
-                {artworks.length > 0 ? (
-                  <div className="pointer-events-none relative h-full w-full origin-top-left scale-[0.5] transform">
-                    <div style={{ transformOrigin: "left top", width: "200%", height: "200%", overflow: "hidden" }}>
-                      <section className="h-full w-full bg-white px-5 py-6">
-                        <h3 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-neutral-900">Artworks</h3>
-                        <div className="grid grid-cols-2 gap-5">
-                          {artworks.slice(0, 2).map((artwork) => (
-                            <article key={artwork.id}>
-                              <div className="relative overflow-hidden bg-[#f3f4ef]" style={{ aspectRatio: "4/5" }}>
-                                {artwork.imageUrl ? (
-                                  <Image
-                                    src={artwork.imageUrl}
-                                    alt={artwork.imageAlt || artwork.title || "Artwork preview"}
-                                    fill
-                                    sizes="220px"
-                                    className="object-cover"
-                                  />
-                                ) : null}
-                              </div>
-                              <div className="mt-3">
-                                <p className="truncate text-[11px] uppercase tracking-[0.14em] text-neutral-500">{artwork.medium || "Artwork"}</p>
-                                <p className="mt-1 truncate text-[14px] font-medium text-neutral-900">
-                                  <span className="italic">{artwork.title || "Untitled"}</span>
-                                  {artwork.year ? <span>, {artwork.year}</span> : null}
-                                </p>
-                                <p className="mt-1 truncate text-[12px] text-neutral-600">{artwork.priceLabel || "Price on request"}</p>
-                              </div>
-                            </article>
-                          ))}
-                          {artworks.length === 1 ? (
-                            <div className="flex items-center justify-center bg-[#f6f7f3]" style={{ aspectRatio: "4/5" }}>
-                              <p className="text-[12px] text-[#5d6758]">Add more artworks</p>
-                            </div>
-                          ) : null}
-                        </div>
-                      </section>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-3 text-center text-xs text-[#5d6758]">No artworks yet</div>
-                )}
-              </div>
-              <p className="px-2 pt-2 text-base font-semibold text-[#1e2522]">Artworks</p>
-            </Link>
+            <SectionPreviewCard href="/app/artworks" label="Artworks" hasContent={artworks.length > 0} emptyMessage="No artworks yet">
+              <ArtworksMiniPreview artworks={artworks} />
+            </SectionPreviewCard>
 
-            <Link href="/app/exhibitions" className="group rounded-[1.25rem]">
-              <div className="h-72 overflow-hidden rounded-[1.25rem] border border-[#d9ddd3] bg-white">
-                {exhibitions.length > 0 ? (
-                  <div className="pointer-events-none relative h-full w-full origin-top-left scale-[0.5] transform">
-                    <div style={{ transformOrigin: "left top", width: "200%", height: "200%", overflow: "hidden" }}>
-                      <section className="h-full w-full bg-white px-5 py-6">
-                        <h3 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-neutral-900">Exhibitions</h3>
-                        <div className="space-y-5">
-                          {exhibitions.slice(0, 2).map((exhibition) => (
-                            <article key={exhibition.id} className="grid grid-cols-[118px_minmax(0,1fr)] gap-4">
-                              <div className="relative aspect-[4/3] overflow-hidden bg-[#f3f4ef]">
-                                {exhibition.imageUrl ? (
-                                  <Image
-                                    src={exhibition.imageUrl}
-                                    alt={exhibition.imageAlt || exhibition.title || "Exhibition preview"}
-                                    fill
-                                    sizes="220px"
-                                    className="object-cover"
-                                  />
-                                ) : null}
-                              </div>
-                              <div>
-                                <p className="text-[11px] uppercase tracking-[0.15em] text-neutral-500">Exhibition</p>
-                                <p className="mt-1 line-clamp-2 text-[15px] font-medium leading-snug text-neutral-900">
-                                  {exhibition.title || "Untitled exhibition"}
-                                </p>
-                                <p className="mt-1 text-[12px] text-neutral-600">{exhibition.location || "No location set"}</p>
-                                <p className="mt-1 text-[12px] text-neutral-500">
-                                  {exhibition.startDate || exhibition.endDate ? `${exhibition.startDate || ""}${exhibition.endDate ? ` - ${exhibition.endDate}` : ""}` : ""}
-                                </p>
-                              </div>
-                            </article>
-                          ))}
-                          {exhibitions.length === 1 ? (
-                            <div className="rounded-xl bg-[#f6f7f3] px-3 py-2 text-[12px] text-[#5d6758]">Add more exhibitions</div>
-                          ) : null}
-                        </div>
-                      </section>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-3 text-center text-xs text-[#5d6758]">No exhibitions yet</div>
-                )}
-              </div>
-              <p className="px-2 pt-2 text-base font-semibold text-[#1e2522]">Exhibitions</p>
-            </Link>
+            <SectionPreviewCard href="/app/exhibitions" label="Exhibitions" hasContent={exhibitions.length > 0} emptyMessage="No exhibitions yet">
+              <ExhibitionsMiniPreview exhibitions={exhibitions} />
+            </SectionPreviewCard>
           </div>
         ) : null}
       </div>
@@ -923,12 +770,13 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       {error ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700">{error}</p> : null}
       {notice ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800">{notice}</p> : null}
 
-      <section className="mx-auto mt-6 max-w-6xl space-y-4">
-        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <Droppable droppableId="dashboard-blocks">
-            {(droppableProvided) => (
-              <div ref={droppableProvided.innerRef} {...droppableProvided.droppableProps} className="space-y-4">
-                {visibleBlockKeys.map((blockKey, listIndex) => {
+      {section !== "all" ? (
+        <section className="mx-auto mt-6 max-w-6xl space-y-4">
+          <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <Droppable droppableId="dashboard-blocks">
+              {(droppableProvided) => (
+                <div ref={droppableProvided.innerRef} {...droppableProvided.droppableProps} className="space-y-4">
+                  {visibleBlockKeys.map((blockKey, listIndex) => {
                 const [type, id] = blockKey.split(":")
                 const isDragging = draggingBlockKey === blockKey
 
@@ -937,97 +785,49 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index === -1) return null
                   const artwork = artworks[index]
                   return (
-                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex} shouldRespectForcePress={false}>
                       {(draggableProvided) => (
-                        <article
+                        <div
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
-                          data-block-key={blockKey}
-                          className={`relative rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
-                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
-                          }`}
                           style={draggableProvided.draggableProps.style}
                         >
-                          <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[106px_minmax(0,1fr)]">
-                            <button
-                              type="button"
-                              {...draggableProvided.dragHandleProps}
-                              className="touch-none absolute left-4 top-4 z-10 inline-flex h-7 w-7 -translate-x-1 -translate-y-1 items-center justify-center rounded-full border border-[#e3e7de] bg-white text-[#88917f] shadow-sm sm:h-8 sm:w-8"
-                            >
-                              <GripVertical className="size-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingBlockKey(blockKey)}
-                              className="col-start-1 row-span-2 h-24 w-24 overflow-hidden rounded-2xl border border-[#e5e8df] bg-[#f4f6f1] sm:h-[106px] sm:w-[106px]"
-                            >
-                              {artwork.imageUrl ? (
-                                <Image
-                                  src={artwork.imageUrl}
-                                  alt={artwork.imageAlt || artwork.title || "Artwork image"}
-                                  width={106}
-                                  height={106}
-                                  unoptimized
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : null}
-                            </button>
-                            <div className="col-start-2 min-w-0">
-                              <p className="text-[11px] uppercase tracking-[0.1em] text-[#6f7868]">Artwork</p>
-                              <button type="button" onClick={() => setEditingBlockKey(blockKey)} className="w-full text-left">
-                                <p className="mt-1 truncate text-lg font-semibold leading-tight text-[#1f251f]">
-                                  {artwork.title || "Untitled artwork"}
-                                </p>
-                              </button>
-                              <p className="mt-1 truncate text-xs text-[#5e6858]">{artwork.year || "No year"} · {artwork.medium || "No medium"}</p>
-                              <p className="mt-2 text-sm font-semibold text-[#1f251f]">{artwork.priceLabel || "Price on request"}</p>
-                            </div>
-                            <div className="col-start-2 flex items-end justify-end gap-1.5 self-end">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const shareUrl = `${window.location.origin}${profilePath}`
-                                  try {
-                                    if (navigator.share) {
-                                      await navigator.share({ title: artwork.title || "Artwork", url: shareUrl })
-                                    } else {
-                                      await navigator.clipboard.writeText(shareUrl)
-                                    }
-                                    setNotice("Artwork link copied.")
-                                  } catch {
-                                    setError("Could not share artwork right now.")
+                          <DashboardMediaEditCard
+                            blockKey={blockKey}
+                            isDragging={isDragging}
+                            dragHandleProps={draggableProvided.dragHandleProps}
+                            label="Artwork"
+                            title={artwork.title || "Untitled artwork"}
+                            subline={`${artwork.year || "No year"} · ${artwork.medium || "No medium"}`}
+                            meta={artwork.priceLabel || "Price on request"}
+                            imageUrl={artwork.imageUrl}
+                            imageAlt={artwork.imageAlt || artwork.title || "Artwork image"}
+                            toggleChecked={artwork.availableForSale}
+                            onEdit={() => setEditingBlockKey(blockKey)}
+                            onShare={() => {
+                              void (async () => {
+                                const shareUrl = `${window.location.origin}${profilePath}`
+                                try {
+                                  if (navigator.share) {
+                                    await navigator.share({ title: artwork.title || "Artwork", url: shareUrl })
+                                  } else {
+                                    await navigator.clipboard.writeText(shareUrl)
                                   }
-                                }}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
-                                aria-label="Share artwork"
-                              >
-                                <Share2 className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
-                                aria-label="Delete artwork"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setArtworks((previous) =>
-                                    previous.map((item, i) => (i === index ? { ...item, availableForSale: !item.availableForSale } : item))
-                                  )
+                                  setNotice("Artwork link copied.")
+                                } catch {
+                                  setError("Could not share artwork right now.")
                                 }
-                                className={`h-7 w-11 rounded-full border px-1 transition ${
-                                  artwork.availableForSale ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                                }`}
-                              >
-                                <span className={`block size-5 rounded-full bg-white transition ${artwork.availableForSale ? "ml-auto" : ""}`} />
-                              </button>
-                            </div>
-                          </div>
-                          {renderDeleteDropdown(blockKey)}
-                        </article>
+                              })()
+                            }}
+                            onDelete={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                            onToggle={() =>
+                              setArtworks((previous) =>
+                                previous.map((item, i) => (i === index ? { ...item, availableForSale: !item.availableForSale } : item))
+                              )
+                            }
+                            renderDeleteDropdown={renderDeleteDropdown(blockKey)}
+                          />
+                        </div>
                       )}
                     </Draggable>
                   )
@@ -1038,48 +838,60 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index === -1) return null
                   const exhibition = exhibitions[index]
                   return (
-                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex} shouldRespectForcePress={false}>
                       {(draggableProvided) => (
-                        <article
+                        <div
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
-                          data-block-key={blockKey}
-                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
-                            isDragging ? "border-[#6a28ff] opacity-70 shadow-md" : "border-[#dde2d7]"
-                          }`}
                           style={draggableProvided.draggableProps.style}
                         >
-                          <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
-                              <GripVertical className="size-5" />
-                            </button>
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Exhibition</p>
-                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{exhibition.title || "Untitled exhibition"}</p>
-                              <p className="mt-1 text-sm text-[#5e6858]">{exhibition.location || "No location"}</p>
-                            </div>
-                            <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExhibitions((previous) => previous.map((item, i) => (i === index ? { ...item, enabled: !item.enabled } : item)))
+                          <DashboardMediaEditCard
+                            blockKey={blockKey}
+                            isDragging={isDragging}
+                            dragHandleProps={draggableProvided.dragHandleProps}
+                            label="Exhibition"
+                            title={exhibition.title || "Untitled exhibition"}
+                            subline={exhibition.location || "No location"}
+                            meta={
+                              exhibition.startDate || exhibition.endDate
+                                ? `${exhibition.startDate || ""}${exhibition.endDate ? ` - ${exhibition.endDate}` : ""}`
+                                : "No dates"
+                            }
+                            imageUrl={exhibition.imageUrl}
+                            imageAlt={exhibition.imageAlt || exhibition.title || "Exhibition image"}
+                            toggleChecked={!exhibition.id.startsWith("exhibition-temp-") && exhibition.enabled}
+                            toggleLocked={exhibition.id.startsWith("exhibition-temp-")}
+                            onEdit={() => setEditingBlockKey(blockKey)}
+                            onShare={() => {
+                              void (async () => {
+                                const shareUrl = `${window.location.origin}${profilePath}`
+                                try {
+                                  if (navigator.share) {
+                                    await navigator.share({ title: exhibition.title || "Exhibition", url: shareUrl })
+                                  } else {
+                                    await navigator.clipboard.writeText(shareUrl)
+                                  }
+                                  setNotice("Exhibition link copied.")
+                                } catch {
+                                  setError("Could not share exhibition right now.")
                                 }
-                                className={`h-9 w-14 rounded-full border px-1 transition ${
-                                  exhibition.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                                }`}
-                              >
-                                <span className={`block size-6 rounded-full bg-white transition ${exhibition.enabled ? "ml-auto" : ""}`} />
-                              </button>
-                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
-                                Edit
-                              </Button>
-                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          {renderDeleteDropdown(blockKey)}
-                        </article>
+                              })()
+                            }}
+                            onDelete={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                            onToggle={() =>
+                              setExhibitions((previous) =>
+                                previous.map((item, i) =>
+                                  i === index
+                                    ? item.id.startsWith("exhibition-temp-")
+                                      ? { ...item, enabled: false }
+                                      : { ...item, enabled: !item.enabled }
+                                    : item
+                                )
+                              )
+                            }
+                            renderDeleteDropdown={renderDeleteDropdown(blockKey)}
+                          />
+                        </div>
                       )}
                     </Draggable>
                   )
@@ -1090,7 +902,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index === -1) return null
                   const item = links[index]
                   return (
-                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex} shouldRespectForcePress={false}>
                       {(draggableProvided) => (
                         <article
                           ref={draggableProvided.innerRef}
@@ -1102,7 +914,13 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           style={draggableProvided.draggableProps.style}
                         >
                           <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
+                            <button
+                              type="button"
+                              data-drag-handle="true"
+                              {...draggableProvided.dragHandleProps}
+                              className="touch-none cursor-grab text-[#88917f] active:cursor-grabbing"
+                              style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                            >
                               <GripVertical className="size-5" />
                             </button>
                             <div>
@@ -1111,17 +929,12 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                               <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
                             </div>
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                              <button
-                                type="button"
-                                onClick={() =>
+                              <DashboardToggleSwitch
+                                checked={item.enabled}
+                                onToggle={() =>
                                   setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
-                                className={`h-9 w-14 rounded-full border px-1 transition ${
-                                  item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                                }`}
-                              >
-                                <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
-                              </button>
+                              />
                               <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
                                 Edit
                               </Button>
@@ -1142,7 +955,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index === -1) return null
                   const item = newsItems[index]
                   return (
-                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex}>
+                    <Draggable key={blockKey} draggableId={blockKey} index={listIndex} shouldRespectForcePress={false}>
                       {(draggableProvided) => (
                         <article
                           ref={draggableProvided.innerRef}
@@ -1154,7 +967,13 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           style={draggableProvided.draggableProps.style}
                         >
                           <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 sm:grid-cols-[32px_minmax(0,1fr)_auto] sm:items-center">
-                            <button type="button" {...draggableProvided.dragHandleProps} className="touch-none text-[#88917f]">
+                            <button
+                              type="button"
+                              data-drag-handle="true"
+                              {...draggableProvided.dragHandleProps}
+                              className="touch-none cursor-grab text-[#88917f] active:cursor-grabbing"
+                              style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                            >
                               <GripVertical className="size-5" />
                             </button>
                             <div>
@@ -1163,17 +982,12 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                               <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
                             </div>
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
-                              <button
-                                type="button"
-                                onClick={() =>
+                              <DashboardToggleSwitch
+                                checked={item.enabled}
+                                onToggle={() =>
                                   setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
-                                className={`h-9 w-14 rounded-full border px-1 transition ${
-                                  item.enabled ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
-                                }`}
-                              >
-                                <span className={`block size-6 rounded-full bg-white transition ${item.enabled ? "ml-auto" : ""}`} />
-                              </button>
+                              />
                               <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
                                 Edit
                               </Button>
@@ -1190,13 +1004,14 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                 }
 
                 return null
-                })}
-                {droppableProvided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-      </section>
+                  })}
+                  {droppableProvided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </section>
+      ) : null}
 
       {editingBlockKey ? (
         <div className="fixed inset-0 z-50 overflow-x-hidden bg-[#f3f4ef]">
@@ -1223,7 +1038,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index < 0) return null
                   const item = artworks[index]
                   return (
-                    <div className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
+                    <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
                       <Input
                         placeholder="Artwork title"
                         value={item.title}
@@ -1281,7 +1096,17 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                         Visible
                       </label>
                       <div className="flex gap-2">
-                        <Button onClick={() => void saveArtwork(index)} disabled={saving} className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]">
+                        <Button
+                          onClick={async () => {
+                            const saved = await saveArtwork(index)
+                            if (saved) {
+                              setEditingBlockKey("")
+                              setExpandedDeleteKey("")
+                            }
+                          }}
+                          disabled={saving}
+                          className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]"
+                        >
                           Save
                         </Button>
                         <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
@@ -1298,7 +1123,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index < 0) return null
                   const item = exhibitions[index]
                   return (
-                    <div className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
+                    <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
                       <Input
                         placeholder="Exhibition title"
                         value={item.title}
@@ -1355,7 +1180,8 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                       <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
                         <input
                           type="checkbox"
-                          checked={item.enabled}
+                          checked={!item.id.startsWith("exhibition-temp-") && item.enabled}
+                          disabled={item.id.startsWith("exhibition-temp-")}
                           onChange={(event) =>
                             setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: event.target.checked } : entry)))
                           }
@@ -1371,7 +1197,17 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                         }
                       />
                       <div className="flex gap-2">
-                        <Button onClick={() => void saveExhibition(index)} disabled={saving} className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]">
+                        <Button
+                          onClick={async () => {
+                            const saved = await saveExhibition(index)
+                            if (saved) {
+                              setEditingBlockKey("")
+                              setExpandedDeleteKey("")
+                            }
+                          }}
+                          disabled={saving}
+                          className="rounded-full bg-[#2a3b28] text-white hover:bg-[#223120]"
+                        >
                           Save
                         </Button>
                         <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
@@ -1388,7 +1224,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index < 0) return null
                   const item = links[index]
                   return (
-                    <div className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
+                    <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
                       <Input
                         placeholder="Link title"
                         value={item.title}
@@ -1426,7 +1262,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   if (index < 0) return null
                   const item = newsItems[index]
                   return (
-                    <div className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
+                    <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
                       <Input
                         placeholder="News headline"
                         value={item.title}
@@ -1466,98 +1302,42 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         </div>
       ) : null}
 
-      {section === "all" ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#d5d7d1] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
-          <div className="mx-auto grid h-12 w-full max-w-md grid-cols-2 px-3">
-            <button
-              type="button"
-              onClick={() => setIsAddSheetOpen(true)}
-              className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[#1f251f] hover:bg-[#f3f4ef]"
-              aria-label="Add"
-            >
-              <Plus className="size-6" />
-              <span className="text-[10px] font-medium leading-none">Add</span>
-            </button>
-            <Link
-              href={profilePath}
-              target="_blank"
-              className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[#1f251f] hover:bg-[#f3f4ef]"
-              aria-label="Preview"
-            >
-              <Binoculars className="size-6" />
-              <span className="text-[10px] font-medium leading-none">Preview</span>
-            </Link>
-          </div>
-        </div>
-      ) : null}
+      <DashboardBottomNav previewPath={previewPath} onAddClick={() => setIsAddSheetOpen(true)} />
 
-      {isAddSheetOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/35" onClick={() => setIsAddSheetOpen(false)}>
-          <div
-            className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-md rounded-t-[28px] bg-[#f3f4ef] p-4 pb-8 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-[#c8cbc2]" />
-            <div className="rounded-2xl bg-[#e8e9e4] px-4 py-3">
-              <label className="flex items-center gap-2 text-[#1f251f]">
-                <Search className="size-5" />
-                <input
-                  value={addSearchQuery}
-                  onChange={(event) => setAddSearchQuery(event.target.value)}
-                  className="w-full bg-transparent text-base outline-none placeholder:text-[#5c6157]"
-                  placeholder="Paste or search a link"
-                />
-              </label>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <button
-                type="button"
-                onClick={() => {
-                  createArtworkDraft()
-                  setIsAddSheetOpen(false)
-                }}
-                className="rounded-2xl bg-[#e8e9e4] p-4 text-center"
-              >
-                <ImagePlus className="mx-auto size-7 text-[#6a28ff]" />
-                <p className="mt-2 text-sm font-semibold text-[#1f251f]">Artwork</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  createExhibitionDraft()
-                  setIsAddSheetOpen(false)
-                }}
-                className="rounded-2xl bg-[#e8e9e4] p-4 text-center"
-              >
-                <CalendarDays className="mx-auto size-7 text-[#6a28ff]" />
-                <p className="mt-2 text-sm font-semibold text-[#1f251f]">Exhibitions</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  createLinkDraft()
-                  setIsAddSheetOpen(false)
-                }}
-                className="rounded-2xl bg-[#e8e9e4] p-4 text-center"
-              >
-                <Link2 className="mx-auto size-7 text-[#6a28ff]" />
-                <p className="mt-2 text-sm font-semibold text-[#1f251f]">Link</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  createNewsDraft()
-                  setIsAddSheetOpen(false)
-                }}
-                className="rounded-2xl bg-[#e8e9e4] p-4 text-center"
-              >
-                <Newspaper className="mx-auto size-7 text-[#6a28ff]" />
-                <p className="mt-2 text-sm font-semibold text-[#1f251f]">News</p>
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <DashboardAddSheet
+        open={isAddSheetOpen}
+        searchQuery={addSearchQuery}
+        onSearchQueryChange={setAddSearchQuery}
+        onClose={() => setIsAddSheetOpen(false)}
+        onAddArtwork={() => {
+          setIsAddSheetOpen(false)
+          if (section === "artworks") {
+            const id = createArtworkDraft()
+            setEditingBlockKey(`artwork:${id}`)
+            return
+          }
+          window.sessionStorage.setItem("dashboard-create", "artwork")
+          router.push("/app/artworks")
+        }}
+        onAddExhibition={() => {
+          setIsAddSheetOpen(false)
+          if (section === "exhibitions") {
+            const id = createExhibitionDraft()
+            setEditingBlockKey(`exhibition:${id}`)
+            return
+          }
+          window.sessionStorage.setItem("dashboard-create", "exhibition")
+          router.push("/app/exhibitions")
+        }}
+        onAddLink={() => {
+          createLinkDraft()
+          setIsAddSheetOpen(false)
+        }}
+        onAddNews={() => {
+          createNewsDraft()
+          setIsAddSheetOpen(false)
+        }}
+      />
     </main>
   )
 }

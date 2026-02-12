@@ -132,6 +132,14 @@
 }
 
 @layer utilities {
+  [data-drag-handle="true"] {
+    cursor: grab !important;
+  }
+
+  [data-drag-handle="true"]:active {
+    cursor: grabbing !important;
+  }
+
   .typ-section-title {
     @apply text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500;
   }
