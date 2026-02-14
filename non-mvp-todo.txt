@@ -1,0 +1,24 @@
+Non-MVP Backlog (Defer Until Core Creator Flow Is Excellent)
+Date: 2026-02-14
+
+Rule
+- If a feature does not improve first-time publish, fast editing, or preview confidence, defer it.
+
+Deferred features
+- Advanced analytics dashboards beyond basic publish/use metrics
+- Recommendation engines / personalized discovery feeds
+- Complex collaboration and role permissions
+- Collector advisory workflows and concierge tooling
+- Advanced marketplace/commerce workflows
+- Rich automation systems (bulk automations, scheduled rule engines)
+- AR/3D preview pipelines
+- Deep notification routing logic
+- Enterprise-level settings and account administration
+
+Revisit trigger
+- Only revisit after MVP quality bar is met:
+  1. one clean global add flow
+  2. modular edit flows
+  3. reliable uploads and persistence
+  4. fast preview loop
+  5. visual consistency across dashboard/public profile/auth

@@ -34,3 +34,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+## Product & UX Guidance
+
+For contributors working on the artist dashboard experience, read:
+
+- `AGENTS.md` for repository-wide product/design implementation rules.
+- `docs/backend-app-design-guide.md` for UX patterns, workflow structure, and review checklists.
+- `docs/mobile-benchmark-implementation-guide.md` for first-principles benchmark translation (Airbnb/Uber/Instagram/Linktree/Artsy/Ocula/Behance).
+- `docs/overarching-style-ui-guide.md` for visual language and route-level UI consistency.
+- `docs/visual-quality-checklist.md` for merge-gate quality checks.
+- `fixes.txt` for current sprint implementation status and priorities.
+- `non-mvp-todo.txt` for intentionally deferred features (to avoid scope creep).

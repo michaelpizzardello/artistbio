@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { FormEvent, useState } from "react"
+import { FormEvent, Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const usernameRegex = /^[a-z0-9._]{3,24}$/
 type Step = "username" | "method" | "credentials"
 
-export default function Page() {
+function SignupPageContent() {
   const searchParams = useSearchParams()
   const usernameFromQuery = (searchParams.get("username") || "").toLowerCase().trim()
   const normalizedQueryUsername = usernameFromQuery.replace(/^@/, "")
@@ -312,5 +312,28 @@ export default function Page() {
         </p>
       </div>
     </main>
+  )
+}
+
+function SignupPageFallback() {
+  return (
+    <main className="min-h-screen bg-[#f3f4ef] px-4 py-10 text-[#182116]">
+      <div className="mx-auto w-full max-w-xl">
+        <div className="mb-10">
+          <Link href="/" className="text-4xl font-black tracking-tight">
+            artistb.io
+          </Link>
+        </div>
+        <p className="text-center text-lg text-[#5a6255]">Loading signup…</p>
+      </div>
+    </main>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<SignupPageFallback />}>
+      <SignupPageContent />
+    </Suspense>
   )
 }

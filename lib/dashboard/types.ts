@@ -46,4 +46,11 @@ export type NewsForm = {
   enabled: boolean
 }
 
-export type DashboardSection = "all" | "artworks" | "exhibitions"
+export type DashboardSection =
+  | "all"
+  | "artworks"
+  | "exhibitions"
+  | "profile"
+  | "news-links"
+  | "enquiries"
+  | "settings"

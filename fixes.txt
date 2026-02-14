@@ -1,0 +1,99 @@
+ArtistBio implementation tracker (code-synced)
+Date: 2026-02-14
+
+How this tracker is maintained
+- Every item below is validated against current local code before being kept.
+- If code changes, stale items are removed immediately.
+- Non-MVP ideas go to `non-mvp-todo.txt`.
+
+Current code snapshot (verified)
+- Global add affordance is icon-only `+` with accessibility label:
+  - components/dashboard/ArtistDashboard.tsx:1823
+- Preview affordance is now icon-only eye in edit contexts and floating action rail:
+  - components/dashboard/ArtistDashboard.tsx:1526
+  - components/dashboard/ArtistDashboard.tsx:1692
+  - components/dashboard/ArtistDashboard.tsx:1815
+- Shared dashboard toggle sizing has been reduced to compact switch dimensions:
+  - components/dashboard/DashboardToggleSwitch.tsx:11
+  - components/dashboard/DashboardToggleSwitch.tsx:15
+- Home no longer duplicates Artworks/Exhibitions list previews:
+  - components/dashboard/ArtistDashboard.tsx:959
+- Profile editor is modular and route-based:
+  - app/edit-profile/page.tsx
+  - app/edit-profile/[section]/page.tsx
+  - components/dashboard/EditProfileEditor.tsx
+- Identity editor includes server-backed username availability check:
+  - components/dashboard/EditProfileEditor.tsx:161
+
+Structured benchmark audit (docs + Linktree/Instagram patterns)
+Benchmarked against:
+- docs/backend-app-design-guide.md
+- docs/mobile-benchmark-implementation-guide.md
+- docs/visual-quality-checklist.md
+- docs/overarching-style-ui-guide.md
+
+P0 findings (must fix for premium parity)
+
+[ ] Replace native checkbox toggles inside edit overlay with shared switch component
+- Why: mixed toggle patterns break cohesion and feel non-productized versus Linktree/Instagram consistency.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1497
+  - components/dashboard/ArtistDashboard.tsx:1650
+  - components/dashboard/ArtistDashboard.tsx:1738
+  - components/dashboard/ArtistDashboard.tsx:1788
+
+[ ] Redesign Settings screen to native list-row IA (Instagram/Linktree parity)
+- Why: current settings UI is static informational cards, while benchmark apps use tappable grouped rows with clear drill-in affordance, hierarchy, and account/security prioritization.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1005
+  - components/dashboard/ArtistDashboard.tsx:1006
+  - components/dashboard/ArtistDashboard.tsx:1022
+
+[ ] Break monolithic “Edit Block” overlay into step-based flows
+- Why: violates progressive disclosure and one-task-per-step standards from dashboard docs and benchmark guide.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1390
+  - components/dashboard/ArtistDashboard.tsx:1415
+  - components/dashboard/ArtistDashboard.tsx:1545
+
+[ ] Replace hardcoded color-heavy styling with tokenized system in dashboard surfaces
+- Why: visual cohesion drift; docs call for token discipline and no ad-hoc style drift.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1391
+  - components/dashboard/DashboardAddSheet.tsx:66
+  - components/dashboard/DashboardMediaEditCard.tsx:69
+
+[ ] Normalize typography scale for mini preview cards to avoid one-off pixel sizes
+- Why: current text size mix reads uneven and below premium benchmark polish.
+- Evidence:
+  - components/dashboard/ArtworksMiniPreview.tsx:11
+  - components/dashboard/ArtworksMiniPreview.tsx:27
+  - components/dashboard/ExhibitionsMiniPreview.tsx:11
+  - components/dashboard/ExhibitionsMiniPreview.tsx:27
+
+[ ] Remove placeholder fallback content on public artist page before production release
+- Why: placeholder editorial copy/image undermines trust and premium feel.
+- Evidence:
+  - app/[username]/page.tsx:25
+  - app/[username]/page.tsx:27
+
+P1 findings (important, not blocking current micro-polish pass)
+
+[ ] Persist News/Links in Supabase
+- Current behavior remains local draft persistence only.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1031
+
+[ ] Add explicit upload retry affordance in artwork/exhibition upload flows
+- Current behavior shows upload progress only.
+- Evidence:
+  - components/dashboard/ArtistDashboard.tsx:1469
+  - components/dashboard/ArtistDashboard.tsx:1635
+
+P2 findings (defer)
+- Broader token migration across marketing/auth/legal surfaces.
+- Advanced micro-motion/state polish once IA/flow refactors stabilize.
+
+Validation snapshot
+- npm run lint: pass (2026-02-14)
+- npm run build: pass (2026-02-14)

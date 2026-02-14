@@ -5,16 +5,14 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd"
-import { ArchiveX, GripVertical, Trash2, X } from "lucide-react"
-import ArtworksMiniPreview from "@/components/dashboard/ArtworksMiniPreview"
+import { ArchiveX, ChevronDown, ChevronUp, ChevronsUp, Eye, GripVertical, MoreHorizontal, Plus, Trash2, X } from "lucide-react"
 import DashboardAddSheet from "@/components/dashboard/DashboardAddSheet"
 import DashboardBottomNav from "@/components/dashboard/DashboardBottomNav"
 import DashboardMediaEditCard from "@/components/dashboard/DashboardMediaEditCard"
+import DashboardMoreSheet from "@/components/dashboard/DashboardMoreSheet"
 import DashboardProfileHeader from "@/components/dashboard/DashboardProfileHeader"
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader"
 import DashboardToggleSwitch from "@/components/dashboard/DashboardToggleSwitch"
-import ExhibitionsMiniPreview from "@/components/dashboard/ExhibitionsMiniPreview"
-import SectionPreviewCard from "@/components/dashboard/SectionPreviewCard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoadingScreen from "@/components/ui/loading-screen"
@@ -34,6 +32,8 @@ const ARTWORK_TABLE = "artworks"
 const EXHIBITION_TABLE = "exhibitions"
 const MEDIA_BUCKET = "artist-media"
 const EXHIBITION_DRAFTS_STORAGE_KEY = "dashboard-exhibition-drafts"
+const LINK_DRAFTS_STORAGE_KEY = "dashboard-link-drafts"
+const NEWS_DRAFTS_STORAGE_KEY = "dashboard-news-drafts"
 
 function isExhibitionBlank(exhibition: ExhibitionForm): boolean {
   return (
@@ -48,13 +48,22 @@ function isExhibitionBlank(exhibition: ExhibitionForm): boolean {
   )
 }
 
+function isLinkBlank(link: LinkForm): boolean {
+  return !link.title.trim() && !link.url.trim()
+}
+
+function isNewsBlank(news: NewsForm): boolean {
+  return !news.title.trim() && !news.url.trim()
+}
+
 export default function ArtistDashboard({ section = "all" }: { section?: DashboardSection }) {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [, setUploadingField] = useState("")
+  const [uploadingField, setUploadingField] = useState("")
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false)
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
   const [addSearchQuery, setAddSearchQuery] = useState("")
   const [draggingBlockKey, setDraggingBlockKey] = useState("")
   const [editingBlockKey, setEditingBlockKey] = useState("")
@@ -112,10 +121,14 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     const exhibitionList = Array.isArray(exhibitionRows)
       ? exhibitionRows.map((row) => mapExhibitionRow(row as Record<string, unknown>))
       : []
-    const draftStorageKey = `${EXHIBITION_DRAFTS_STORAGE_KEY}:${authUser.id}`
+    const exhibitionDraftStorageKey = `${EXHIBITION_DRAFTS_STORAGE_KEY}:${authUser.id}`
+    const linkDraftStorageKey = `${LINK_DRAFTS_STORAGE_KEY}:${authUser.id}`
+    const newsDraftStorageKey = `${NEWS_DRAFTS_STORAGE_KEY}:${authUser.id}`
     let exhibitionDrafts: ExhibitionForm[] = []
+    let linkDrafts: LinkForm[] = []
+    let newsDrafts: NewsForm[] = []
     try {
-      const rawDrafts = window.localStorage.getItem(draftStorageKey)
+      const rawDrafts = window.localStorage.getItem(exhibitionDraftStorageKey)
       if (rawDrafts) {
         const parsed = JSON.parse(rawDrafts) as ExhibitionForm[]
         if (Array.isArray(parsed)) {
@@ -125,8 +138,32 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
             .map((draft) => ({ ...draft, enabled: false }))
         }
       }
+
+      const rawLinkDrafts = window.localStorage.getItem(linkDraftStorageKey)
+      if (rawLinkDrafts) {
+        const parsed = JSON.parse(rawLinkDrafts) as LinkForm[]
+        if (Array.isArray(parsed)) {
+          linkDrafts = parsed
+            .filter((draft) => typeof draft?.id === "string" && draft.id.startsWith("link-temp-"))
+            .filter((draft) => !isLinkBlank(draft))
+            .map((draft) => ({ ...draft, enabled: true }))
+        }
+      }
+
+      const rawNewsDrafts = window.localStorage.getItem(newsDraftStorageKey)
+      if (rawNewsDrafts) {
+        const parsed = JSON.parse(rawNewsDrafts) as NewsForm[]
+        if (Array.isArray(parsed)) {
+          newsDrafts = parsed
+            .filter((draft) => typeof draft?.id === "string" && draft.id.startsWith("news-temp-"))
+            .filter((draft) => !isNewsBlank(draft))
+            .map((draft) => ({ ...draft, enabled: true }))
+        }
+      }
     } catch {
       exhibitionDrafts = []
+      linkDrafts = []
+      newsDrafts = []
     }
     const createType = window.sessionStorage.getItem("dashboard-create")
     window.sessionStorage.removeItem("dashboard-create")
@@ -172,6 +209,31 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       setEditingBlockKey(`exhibition:${id}`)
     } else {
       setExhibitions([...exhibitionDrafts, ...exhibitionList])
+    }
+
+    if (section === "news-links") {
+      const nextLinks = [...linkDrafts]
+      const nextNewsItems = [...newsDrafts]
+
+      if (createType === "link") {
+        const id = createTempId("link")
+        nextLinks.unshift({ id, title: "", url: "", enabled: true })
+        setLinks(nextLinks)
+        setNewsItems(nextNewsItems)
+        setEditingBlockKey(`link:${id}`)
+      } else if (createType === "news") {
+        const id = createTempId("news")
+        nextNewsItems.unshift({ id, title: "", url: "", enabled: true })
+        setLinks(nextLinks)
+        setNewsItems(nextNewsItems)
+        setEditingBlockKey(`news:${id}`)
+      } else {
+        setLinks(nextLinks)
+        setNewsItems(nextNewsItems)
+      }
+    } else {
+      setLinks([])
+      setNewsItems([])
     }
 
     setLoading(false)
@@ -234,10 +296,46 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     window.localStorage.setItem(draftStorageKey, JSON.stringify(drafts))
   }, [exhibitions, user])
 
+  useEffect(() => {
+    if (!user) return
+
+    const linkDraftStorageKey = `${LINK_DRAFTS_STORAGE_KEY}:${user.id}`
+    const newsDraftStorageKey = `${NEWS_DRAFTS_STORAGE_KEY}:${user.id}`
+
+    const linkDrafts = links
+      .filter((item) => item.id.startsWith("link-temp-"))
+      .filter((item) => !isLinkBlank(item))
+      .map((item) => ({ ...item, enabled: true }))
+    const newsDrafts = newsItems
+      .filter((item) => item.id.startsWith("news-temp-"))
+      .filter((item) => !isNewsBlank(item))
+      .map((item) => ({ ...item, enabled: true }))
+
+    if (linkDrafts.length === 0) {
+      window.localStorage.removeItem(linkDraftStorageKey)
+    } else {
+      window.localStorage.setItem(linkDraftStorageKey, JSON.stringify(linkDrafts))
+    }
+
+    if (newsDrafts.length === 0) {
+      window.localStorage.removeItem(newsDraftStorageKey)
+    } else {
+      window.localStorage.setItem(newsDraftStorageKey, JSON.stringify(newsDrafts))
+    }
+  }, [links, newsItems, user])
+
   const visibleBlockKeys = useMemo(() => {
     if (section === "all") return orderedBlockKeys
-    const prefix = section === "artworks" ? "artwork:" : "exhibition:"
-    return orderedBlockKeys.filter((key) => key.startsWith(prefix))
+    if (section === "artworks") {
+      return orderedBlockKeys.filter((key) => key.startsWith("artwork:"))
+    }
+    if (section === "exhibitions") {
+      return orderedBlockKeys.filter((key) => key.startsWith("exhibition:"))
+    }
+    if (section === "news-links") {
+      return orderedBlockKeys.filter((key) => key.startsWith("link:") || key.startsWith("news:"))
+    }
+    return []
   }, [orderedBlockKeys, section])
 
   const uploadImage = async (file: File, folder: string): Promise<string | null> => {
@@ -531,27 +629,31 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   }, [])
 
   const createLinkDraft = () => {
+    const id = createTempId("link")
     setLinks((previous) => [
       {
-        id: createTempId("link"),
+        id,
         title: "",
         url: addSearchQuery.trim(),
         enabled: true,
       },
       ...previous,
     ])
+    return id
   }
 
   const createNewsDraft = () => {
+    const id = createTempId("news")
     setNewsItems((previous) => [
       {
-        id: createTempId("news"),
+        id,
         title: "",
         url: addSearchQuery.trim(),
         enabled: true,
       },
       ...previous,
     ])
+    return id
   }
 
   const handleDragStart = (start: DragStart) => {
@@ -570,6 +672,51 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       return next
     })
   }
+
+  const moveBlockInVisibleList = useCallback(
+    (blockKey: string, direction: "up" | "down") => {
+      setOrderedBlockKeys((previous) => {
+        const visible = visibleBlockKeys.filter((key) => previous.includes(key))
+        const sourceVisibleIndex = visible.indexOf(blockKey)
+        if (sourceVisibleIndex < 0) return previous
+
+        const targetVisibleIndex = direction === "up" ? sourceVisibleIndex - 1 : sourceVisibleIndex + 1
+        if (targetVisibleIndex < 0 || targetVisibleIndex >= visible.length) return previous
+
+        const targetBlockKey = visible[targetVisibleIndex]
+        const sourceIndex = previous.indexOf(blockKey)
+        const targetIndex = previous.indexOf(targetBlockKey)
+
+        if (sourceIndex < 0 || targetIndex < 0) return previous
+
+        const next = [...previous]
+        next.splice(sourceIndex, 1)
+        next.splice(targetIndex, 0, blockKey)
+        return next
+      })
+    },
+    [visibleBlockKeys]
+  )
+
+  const moveBlockToTop = useCallback(
+    (blockKey: string) => {
+      setOrderedBlockKeys((previous) => {
+        const visible = visibleBlockKeys.filter((key) => previous.includes(key))
+        const firstVisibleKey = visible[0]
+        if (!firstVisibleKey || firstVisibleKey === blockKey) return previous
+
+        const sourceIndex = previous.indexOf(blockKey)
+        const targetIndex = previous.indexOf(firstVisibleKey)
+        if (sourceIndex < 0 || targetIndex < 0) return previous
+
+        const next = [...previous]
+        next.splice(sourceIndex, 1)
+        next.splice(targetIndex, 0, blockKey)
+        return next
+      })
+    },
+    [visibleBlockKeys]
+  )
 
   const archiveBlock = async (blockKey: string) => {
     const [type, id] = blockKey.split(":")
@@ -676,7 +823,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
               void archiveBlock(blockKey)
               setExpandedDeleteKey("")
             }}
-            className="inline-flex min-w-0 items-center justify-center gap-2 rounded-full bg-[#7a3df2] px-3 py-2 text-sm font-semibold text-white"
+            className="inline-flex min-w-0 items-center justify-center gap-2 rounded-full bg-[#2a3b28] px-3 py-2 text-sm font-semibold text-white"
           >
             <ArchiveX className="size-4" />
             Archive
@@ -713,7 +860,48 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   const profilePath = `/${profile.username.trim() || "yourname"}`
   const previewPath = `/u/${profile.username.trim() || "yourname"}`
   const profileUrlLabel = `artistb.io${profilePath}`
-  const sectionTitle = section === "artworks" ? "Artworks" : section === "exhibitions" ? "Exhibitions" : "Artist Dashboard"
+  const sectionTitle =
+    section === "artworks"
+      ? "Artworks"
+      : section === "exhibitions"
+        ? "Exhibitions"
+        : section === "profile"
+          ? "Profile"
+          : section === "news-links"
+            ? "News & Links"
+            : section === "enquiries"
+              ? "Enquiries"
+              : section === "settings"
+                ? "Settings"
+                : "Artist Dashboard"
+  const activePrimaryTab =
+    section === "all"
+      ? "home"
+      : section === "artworks"
+        ? "artworks"
+        : section === "exhibitions"
+          ? "exhibitions"
+          : section === "profile"
+            ? "profile"
+            : null
+  const isListSection = section === "artworks" || section === "exhibitions" || section === "news-links"
+  const pendingDraftCount =
+    artworks.filter((item) => item.id.startsWith("artwork-temp-")).length +
+    exhibitions.filter((item) => item.id.startsWith("exhibition-temp-")).length +
+    links.filter((item) => item.id.startsWith("link-temp-")).length +
+    newsItems.filter((item) => item.id.startsWith("news-temp-")).length
+  const recentUpdates = [
+    ...artworks.slice(0, 2).map((item) => ({
+      id: `artwork-${item.id}`,
+      label: "Artwork",
+      title: item.title || "Untitled artwork",
+    })),
+    ...exhibitions.slice(0, 2).map((item) => ({
+      id: `exhibition-${item.id}`,
+      label: "Exhibition",
+      title: item.title || "Untitled exhibition",
+    })),
+  ].slice(0, 4)
   const handleBack = () => {
     if (window.history.length > 1) {
       router.back()
@@ -755,22 +943,102 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         )}
 
         {section === "all" ? (
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <SectionPreviewCard href="/app/artworks" label="Artworks" hasContent={artworks.length > 0} emptyMessage="No artworks yet">
-              <ArtworksMiniPreview artworks={artworks} />
-            </SectionPreviewCard>
-
-            <SectionPreviewCard href="/app/exhibitions" label="Exhibitions" hasContent={exhibitions.length > 0} emptyMessage="No exhibitions yet">
-              <ExhibitionsMiniPreview exhibitions={exhibitions} />
-            </SectionPreviewCard>
+          <div className="mt-6 space-y-5">
+            <section className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <p className="font-medium text-[#283227]">{pendingDraftCount} drafts</p>
+                <p className="text-[#5f695c]">{artworks.length} artworks</p>
+                <p className="text-[#5f695c]">{exhibitions.length} exhibitions</p>
+              </div>
+              {recentUpdates.length ? (
+                <div className="mt-4 border-t border-[#e5e9e1] pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6a7565]">Recent activity</p>
+                  <ul className="mt-2 space-y-2">
+                    {recentUpdates.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between border-b border-[#edf1ea] py-2 text-sm text-[#273226] last:border-b-0">
+                        <span className="truncate">{item.title}</span>
+                        <span className="ml-2 shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#62705f]">
+                          {item.label}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
           </div>
+        ) : null}
+
+        {section === "profile" ? (
+          <section className="mt-6 space-y-3">
+            <div className="grid gap-3">
+              <Link href="/edit-profile/identity" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+                <p className="text-sm font-semibold text-[#1f251f]">Identity</p>
+                <p className="mt-1 text-sm text-[#5a6757]">Name, username, and profile image</p>
+              </Link>
+              <Link href="/edit-profile/about" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+                <p className="text-sm font-semibold text-[#1f251f]">About</p>
+                <p className="mt-1 text-sm text-[#5a6757]">Bio and short personal statement</p>
+              </Link>
+              <Link href="/edit-profile/cv" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+                <p className="text-sm font-semibold text-[#1f251f]">CV</p>
+                <p className="mt-1 text-sm text-[#5a6757]">Career history and milestones</p>
+              </Link>
+              <Link href="/edit-profile/links" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+                <p className="text-sm font-semibold text-[#1f251f]">Links & Contact</p>
+                <p className="mt-1 text-sm text-[#5a6757]">Social links and enquiry channels</p>
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {section === "enquiries" ? (
+          <section className="mt-6 rounded-2xl border border-[#dce1d7] bg-white p-5">
+            <h2 className="text-base font-semibold text-[#1f251f]">Inbox is quiet</h2>
+            <p className="mt-2 text-sm text-[#586252]">
+              Messages from collectors and curators will appear here with status tracking once enquiry capture is enabled.
+            </p>
+          </section>
+        ) : null}
+
+        {section === "settings" ? (
+          <section className="mt-6 space-y-3">
+            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+              <p className="text-sm font-semibold text-[#1f251f]">Account details</p>
+              <p className="mt-1 text-sm text-[#5a6757]">Manage account email and profile ownership.</p>
+            </div>
+            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+              <p className="text-sm font-semibold text-[#1f251f]">Password & security</p>
+              <p className="mt-1 text-sm text-[#5a6757]">Security settings and sign-in controls.</p>
+            </div>
+            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+              <p className="text-sm font-semibold text-[#1f251f]">Notifications</p>
+              <p className="mt-1 text-sm text-[#5a6757]">Choose what updates you receive.</p>
+            </div>
+            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
+              <p className="text-sm font-semibold text-[#1f251f]">Privacy & visibility</p>
+              <p className="mt-1 text-sm text-[#5a6757]">Control public visibility and discovery.</p>
+            </div>
+            <div className="rounded-2xl border border-dashed border-[#dce1d7] bg-white p-4">
+              <p className="text-sm font-semibold text-[#1f251f]">Billing</p>
+              <p className="mt-1 text-sm text-[#5a6757]">Billing controls are staged and will be enabled in a later release.</p>
+            </div>
+          </section>
+        ) : null}
+
+        {section === "news-links" ? (
+          <section className="mt-6 rounded-2xl border border-[#dce1d7] bg-white p-4">
+            <p className="text-xs text-[#667262]">
+              Draft items save locally on this device while server publishing for News &amp; Links is being completed.
+            </p>
+          </section>
         ) : null}
       </div>
 
       {error ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700">{error}</p> : null}
       {notice ? <p className="mx-auto mt-4 max-w-6xl rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800">{notice}</p> : null}
 
-      {section !== "all" ? (
+      {isListSection ? (
         <section className="mx-auto mt-6 max-w-6xl space-y-4">
           <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <Droppable droppableId="dashboard-blocks">
@@ -802,7 +1070,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             meta={artwork.priceLabel || "Price on request"}
                             imageUrl={artwork.imageUrl}
                             imageAlt={artwork.imageAlt || artwork.title || "Artwork image"}
+                            showLabel={section !== "artworks"}
                             toggleChecked={artwork.availableForSale}
+                            toggleAriaLabel={`Visibility for ${artwork.title || "untitled artwork"}`}
                             onEdit={() => setEditingBlockKey(blockKey)}
                             onShare={() => {
                               void (async () => {
@@ -825,6 +1095,13 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                 previous.map((item, i) => (i === index ? { ...item, availableForSale: !item.availableForSale } : item))
                               )
                             }
+                            onMoveToTop={() => moveBlockToTop(blockKey)}
+                            onMoveUp={() => moveBlockInVisibleList(blockKey, "up")}
+                            onMoveDown={() => moveBlockInVisibleList(blockKey, "down")}
+                            moveToTopDisabled={listIndex === 0}
+                            moveUpDisabled={listIndex === 0}
+                            moveDownDisabled={listIndex === visibleBlockKeys.length - 1}
+                            helperText={uploadingField === `artwork-${index}` ? "Uploading image..." : undefined}
                             renderDeleteDropdown={renderDeleteDropdown(blockKey)}
                           />
                         </div>
@@ -859,8 +1136,10 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             }
                             imageUrl={exhibition.imageUrl}
                             imageAlt={exhibition.imageAlt || exhibition.title || "Exhibition image"}
+                            showLabel={section !== "exhibitions"}
                             toggleChecked={!exhibition.id.startsWith("exhibition-temp-") && exhibition.enabled}
                             toggleLocked={exhibition.id.startsWith("exhibition-temp-")}
+                            toggleAriaLabel={`Visibility for ${exhibition.title || "untitled exhibition"}`}
                             onEdit={() => setEditingBlockKey(blockKey)}
                             onShare={() => {
                               void (async () => {
@@ -889,6 +1168,13 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                 )
                               )
                             }
+                            onMoveToTop={() => moveBlockToTop(blockKey)}
+                            onMoveUp={() => moveBlockInVisibleList(blockKey, "up")}
+                            onMoveDown={() => moveBlockInVisibleList(blockKey, "down")}
+                            moveToTopDisabled={listIndex === 0}
+                            moveUpDisabled={listIndex === 0}
+                            moveDownDisabled={listIndex === visibleBlockKeys.length - 1}
+                            helperText={uploadingField === `exhibition-${index}` ? "Uploading image..." : undefined}
                             renderDeleteDropdown={renderDeleteDropdown(blockKey)}
                           />
                         </div>
@@ -918,8 +1204,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                               type="button"
                               data-drag-handle="true"
                               {...draggableProvided.dragHandleProps}
-                              className="touch-none cursor-grab text-[#88917f] active:cursor-grabbing"
+                              className="touch-none inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-full border border-[#d6dbd0] text-[#88917f] active:cursor-grabbing"
                               style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                              aria-label="Reorder link by drag"
                             >
                               <GripVertical className="size-5" />
                             </button>
@@ -931,16 +1218,59 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
                               <DashboardToggleSwitch
                                 checked={item.enabled}
+                                ariaLabel={`Visibility for ${item.title || "untitled link"}`}
                                 onToggle={() =>
                                   setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
                               />
-                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
+                              <Button variant="outline" className="h-11" onClick={() => setEditingBlockKey(blockKey)}>
                                 Edit
                               </Button>
-                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                                <Trash2 className="size-4" />
-                              </Button>
+                              <details className="relative">
+                                <summary
+                                  className="inline-flex h-11 w-11 list-none items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5] [&::-webkit-details-marker]:hidden"
+                                  aria-label="More actions"
+                                >
+                                  <MoreHorizontal className="size-4" />
+                                </summary>
+                                <div className="absolute right-0 top-12 z-30 w-44 rounded-xl border border-[#d9ddd3] bg-white p-1 shadow-lg">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockToTop(blockKey)}
+                                    disabled={listIndex === 0}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronsUp className="size-4" />
+                                    Move to top
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockInVisibleList(blockKey, "up")}
+                                    disabled={listIndex === 0}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronUp className="size-4" />
+                                    Move up
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockInVisibleList(blockKey, "down")}
+                                    disabled={listIndex === visibleBlockKeys.length - 1}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronDown className="size-4" />
+                                    Move down
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]"
+                                  >
+                                    <Trash2 className="size-4" />
+                                    Delete or archive
+                                  </button>
+                                </div>
+                              </details>
                             </div>
                           </div>
                           {renderDeleteDropdown(blockKey)}
@@ -971,8 +1301,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                               type="button"
                               data-drag-handle="true"
                               {...draggableProvided.dragHandleProps}
-                              className="touch-none cursor-grab text-[#88917f] active:cursor-grabbing"
+                              className="touch-none inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-full border border-[#d6dbd0] text-[#88917f] active:cursor-grabbing"
                               style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                              aria-label="Reorder news item by drag"
                             >
                               <GripVertical className="size-5" />
                             </button>
@@ -984,16 +1315,59 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
                               <DashboardToggleSwitch
                                 checked={item.enabled}
+                                ariaLabel={`Visibility for ${item.title || "untitled news item"}`}
                                 onToggle={() =>
                                   setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
                               />
-                              <Button variant="outline" onClick={() => setEditingBlockKey(blockKey)}>
+                              <Button variant="outline" className="h-11" onClick={() => setEditingBlockKey(blockKey)}>
                                 Edit
                               </Button>
-                              <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}>
-                                <Trash2 className="size-4" />
-                              </Button>
+                              <details className="relative">
+                                <summary
+                                  className="inline-flex h-11 w-11 list-none items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5] [&::-webkit-details-marker]:hidden"
+                                  aria-label="More actions"
+                                >
+                                  <MoreHorizontal className="size-4" />
+                                </summary>
+                                <div className="absolute right-0 top-12 z-30 w-44 rounded-xl border border-[#d9ddd3] bg-white p-1 shadow-lg">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockToTop(blockKey)}
+                                    disabled={listIndex === 0}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronsUp className="size-4" />
+                                    Move to top
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockInVisibleList(blockKey, "up")}
+                                    disabled={listIndex === 0}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronUp className="size-4" />
+                                    Move up
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveBlockInVisibleList(blockKey, "down")}
+                                    disabled={listIndex === visibleBlockKeys.length - 1}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
+                                  >
+                                    <ChevronDown className="size-4" />
+                                    Move down
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]"
+                                  >
+                                    <Trash2 className="size-4" />
+                                    Delete or archive
+                                  </button>
+                                </div>
+                              </details>
                             </div>
                           </div>
                           {renderDeleteDropdown(blockKey)}
@@ -1039,50 +1413,87 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   const item = artworks[index]
                   return (
                     <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
-                      <Input
-                        placeholder="Artwork title"
-                        value={item.title}
-                        onChange={(event) =>
-                          setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Year"
-                        value={item.year}
-                        onChange={(event) =>
-                          setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, year: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Medium"
-                        value={item.medium}
-                        onChange={(event) =>
-                          setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, medium: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0]
-                          if (!file) return
-                          void uploadArtworkImage(index, file)
-                        }}
-                      />
-                      <Input
-                        placeholder="Image alt"
-                        value={item.imageAlt}
-                        onChange={(event) =>
-                          setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, imageAlt: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Price label"
-                        value={item.priceLabel}
-                        onChange={(event) =>
-                          setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, priceLabel: event.target.value } : entry)))
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-title-${item.id}`}>
+                          Title
+                        </label>
+                        <Input
+                          id={`artwork-title-${item.id}`}
+                          placeholder="Untitled"
+                          value={item.title}
+                          onChange={(event) =>
+                            setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-year-${item.id}`}>
+                          Year
+                        </label>
+                        <Input
+                          id={`artwork-year-${item.id}`}
+                          placeholder="2026"
+                          value={item.year}
+                          onChange={(event) =>
+                            setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, year: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-medium-${item.id}`}>
+                          Medium
+                        </label>
+                        <Input
+                          id={`artwork-medium-${item.id}`}
+                          placeholder="Oil on canvas"
+                          value={item.medium}
+                          onChange={(event) =>
+                            setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, medium: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-image-${item.id}`}>
+                          Artwork image
+                        </label>
+                        <Input
+                          id={`artwork-image-${item.id}`}
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            if (!file) return
+                            void uploadArtworkImage(index, file)
+                          }}
+                        />
+                        {uploadingField === `artwork-${index}` ? <p className="text-xs text-[#4f5b49]">Uploading image...</p> : null}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-alt-${item.id}`}>
+                          Image alt text
+                        </label>
+                        <Input
+                          id={`artwork-alt-${item.id}`}
+                          placeholder="Describe the artwork image"
+                          value={item.imageAlt}
+                          onChange={(event) =>
+                            setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, imageAlt: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`artwork-price-${item.id}`}>
+                          Price label
+                        </label>
+                        <Input
+                          id={`artwork-price-${item.id}`}
+                          placeholder="Price on request"
+                          value={item.priceLabel}
+                          onChange={(event) =>
+                            setArtworks((previous) => previous.map((entry, i) => (i === index ? { ...entry, priceLabel: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
                       <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
                         <input
                           type="checkbox"
@@ -1112,6 +1523,11 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                         >
                           Save
                         </Button>
+                        <Button asChild variant="outline" className="h-11 w-11 p-0" aria-label="Open preview">
+                          <Link href={previewPath} aria-label="Open preview">
+                            <Eye className="size-4" />
+                          </Link>
+                        </Button>
                         <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
                           <Trash2 className="size-4" />
                         </Button>
@@ -1127,59 +1543,110 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   const item = exhibitions[index]
                   return (
                     <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
-                      <Input
-                        placeholder="Exhibition title"
-                        value={item.title}
-                        onChange={(event) =>
-                          setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Artist label"
-                        value={item.artist}
-                        onChange={(event) =>
-                          setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, artist: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Location"
-                        value={item.location}
-                        onChange={(event) =>
-                          setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, location: event.target.value } : entry)))
-                        }
-                      />
-                      <div className="grid gap-2 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-title-${item.id}`}>
+                          Title
+                        </label>
                         <Input
-                          type="date"
-                          value={item.startDate}
+                          id={`exhibition-title-${item.id}`}
+                          placeholder="Exhibition title"
+                          value={item.title}
                           onChange={(event) =>
-                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, startDate: event.target.value } : entry)))
-                          }
-                        />
-                        <Input
-                          type="date"
-                          value={item.endDate}
-                          onChange={(event) =>
-                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, endDate: event.target.value } : entry)))
+                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
                           }
                         />
                       </div>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0]
-                          if (!file) return
-                          void uploadExhibitionImage(index, file)
-                        }}
-                      />
-                      <Input
-                        placeholder="Hero image alt"
-                        value={item.imageAlt}
-                        onChange={(event) =>
-                          setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, imageAlt: event.target.value } : entry)))
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-artist-${item.id}`}>
+                          Artist label
+                        </label>
+                        <Input
+                          id={`exhibition-artist-${item.id}`}
+                          placeholder="Artist label"
+                          value={item.artist}
+                          onChange={(event) =>
+                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, artist: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-location-${item.id}`}>
+                          Location
+                        </label>
+                        <Input
+                          id={`exhibition-location-${item.id}`}
+                          placeholder="City, venue"
+                          value={item.location}
+                          onChange={(event) =>
+                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, location: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label
+                            className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]"
+                            htmlFor={`exhibition-start-${item.id}`}
+                          >
+                            Start date
+                          </label>
+                          <Input
+                            id={`exhibition-start-${item.id}`}
+                            type="date"
+                            value={item.startDate}
+                            onChange={(event) =>
+                              setExhibitions((previous) =>
+                                previous.map((entry, i) => (i === index ? { ...entry, startDate: event.target.value } : entry))
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label
+                            className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]"
+                            htmlFor={`exhibition-end-${item.id}`}
+                          >
+                            End date
+                          </label>
+                          <Input
+                            id={`exhibition-end-${item.id}`}
+                            type="date"
+                            value={item.endDate}
+                            onChange={(event) =>
+                              setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, endDate: event.target.value } : entry)))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-image-${item.id}`}>
+                          Hero image
+                        </label>
+                        <Input
+                          id={`exhibition-image-${item.id}`}
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            if (!file) return
+                            void uploadExhibitionImage(index, file)
+                          }}
+                        />
+                        {uploadingField === `exhibition-${index}` ? <p className="text-xs text-[#4f5b49]">Uploading image...</p> : null}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-alt-${item.id}`}>
+                          Hero image alt text
+                        </label>
+                        <Input
+                          id={`exhibition-alt-${item.id}`}
+                          placeholder="Describe the hero image"
+                          value={item.imageAlt}
+                          onChange={(event) =>
+                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, imageAlt: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
                       <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
                         <input
                           type="checkbox"
@@ -1191,14 +1658,20 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                         />
                         Visible
                       </label>
-                      <textarea
-                        className="min-h-24 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
-                        placeholder="Summary"
-                        value={item.summary}
-                        onChange={(event) =>
-                          setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, summary: event.target.value } : entry)))
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-summary-${item.id}`}>
+                          Summary
+                        </label>
+                        <textarea
+                          id={`exhibition-summary-${item.id}`}
+                          className="min-h-24 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
+                          placeholder="Write a short summary"
+                          value={item.summary}
+                          onChange={(event) =>
+                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, summary: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={async () => {
@@ -1216,6 +1689,11 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                         >
                           Save
                         </Button>
+                        <Button asChild variant="outline" className="h-11 w-11 p-0" aria-label="Open preview">
+                          <Link href={previewPath} aria-label="Open preview">
+                            <Eye className="size-4" />
+                          </Link>
+                        </Button>
                         <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
                           <Trash2 className="size-4" />
                         </Button>
@@ -1231,20 +1709,32 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   const item = links[index]
                   return (
                     <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
-                      <Input
-                        placeholder="Link title"
-                        value={item.title}
-                        onChange={(event) =>
-                          setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="https://..."
-                        value={item.url}
-                        onChange={(event) =>
-                          setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, url: event.target.value } : entry)))
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`link-title-${item.id}`}>
+                          Link title
+                        </label>
+                        <Input
+                          id={`link-title-${item.id}`}
+                          placeholder="Article title"
+                          value={item.title}
+                          onChange={(event) =>
+                            setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`link-url-${item.id}`}>
+                          URL
+                        </label>
+                        <Input
+                          id={`link-url-${item.id}`}
+                          placeholder="https://example.com"
+                          value={item.url}
+                          onChange={(event) =>
+                            setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, url: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
                       <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
                         <input
                           type="checkbox"
@@ -1269,20 +1759,32 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                   const item = newsItems[index]
                   return (
                     <div data-block-key={editingBlockKey} className="space-y-3 rounded-2xl border border-[#dde2d7] bg-white p-4">
-                      <Input
-                        placeholder="News headline"
-                        value={item.title}
-                        onChange={(event) =>
-                          setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
-                        }
-                      />
-                      <Input
-                        placeholder="Source link"
-                        value={item.url}
-                        onChange={(event) =>
-                          setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, url: event.target.value } : entry)))
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`news-title-${item.id}`}>
+                          News headline
+                        </label>
+                        <Input
+                          id={`news-title-${item.id}`}
+                          placeholder="Headline"
+                          value={item.title}
+                          onChange={(event) =>
+                            setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, title: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`news-url-${item.id}`}>
+                          Source URL
+                        </label>
+                        <Input
+                          id={`news-url-${item.id}`}
+                          placeholder="https://example.com"
+                          value={item.url}
+                          onChange={(event) =>
+                            setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, url: event.target.value } : entry)))
+                          }
+                        />
+                      </div>
                       <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
                         <input
                           type="checkbox"
@@ -1308,7 +1810,26 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         </div>
       ) : null}
 
-      <DashboardBottomNav previewPath={previewPath} onAddClick={() => setIsAddSheetOpen(true)} />
+      {!editingBlockKey ? (
+        <div className="fixed bottom-20 right-4 z-40 flex items-center gap-2">
+          <Button asChild type="button" variant="outline" className="h-12 w-12 rounded-full border-[#cad1c2] bg-white/95 p-0" aria-label="Open preview">
+            <Link href={previewPath} aria-label="Open preview">
+              <Eye className="size-5" />
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setIsAddSheetOpen(true)}
+            aria-label="Add"
+            className="h-12 w-12 rounded-full bg-[#2a3b28] p-0 text-white shadow-lg shadow-[#162113]/20 hover:bg-[#223120]"
+          >
+            <Plus className="size-5" />
+          </Button>
+        </div>
+      ) : null}
+
+      <DashboardBottomNav activeTab={activePrimaryTab} onMoreClick={() => setIsMoreSheetOpen(true)} />
+      <DashboardMoreSheet open={isMoreSheetOpen} onClose={() => setIsMoreSheetOpen(false)} />
 
       <DashboardAddSheet
         open={isAddSheetOpen}
@@ -1336,12 +1857,24 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
           router.push("/app/exhibitions")
         }}
         onAddLink={() => {
-          createLinkDraft()
           setIsAddSheetOpen(false)
+          if (section === "news-links") {
+            const id = createLinkDraft()
+            setEditingBlockKey(`link:${id}`)
+            return
+          }
+          window.sessionStorage.setItem("dashboard-create", "link")
+          router.push("/app/news-links")
         }}
         onAddNews={() => {
-          createNewsDraft()
           setIsAddSheetOpen(false)
+          if (section === "news-links") {
+            const id = createNewsDraft()
+            setEditingBlockKey(`news:${id}`)
+            return
+          }
+          window.sessionStorage.setItem("dashboard-create", "news")
+          router.push("/app/news-links")
         }}
       />
     </main>

@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Link from "next/link"
 import { Bell, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -35,13 +34,7 @@ export default function DashboardProfileHeader({
               />
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-[37px] min-w-0 rounded-full border border-[#cfcfcb] bg-transparent px-3 py-1 text-[14px] leading-none font-semibold tracking-[-0.005em] text-[#242b24] shadow-none"
-          >
-            Try Pro for free
-          </Button>
+          <p className="truncate text-sm font-semibold text-[#2d362f]">@{username.trim() || "username"}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button type="button" onClick={onShareProfile} variant="ghost" className="size-11 p-0 text-[#1f2622] hover:bg-transparent">
@@ -54,9 +47,6 @@ export default function DashboardProfileHeader({
       </div>
       <h1 className="mt-4 text-[30px] font-black leading-[0.95] tracking-[-0.03em] text-[#1e2522]">{name.trim() || username.trim() || "Artist Name"}</h1>
       <p className="mt-3 text-[18px] leading-none tracking-[-0.02em] text-[#2a312c]">{profileUrlLabel}</p>
-      <Button asChild type="button" variant="outline" className="mt-5 h-8 rounded-full border-[#cfcfcb] px-3 text-xs font-semibold text-[#242b24]">
-        <Link href="/edit-profile">Edit profile</Link>
-      </Button>
     </>
   )
 }
