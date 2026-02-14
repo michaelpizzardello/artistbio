@@ -1102,6 +1102,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             if (saved) {
                               setEditingBlockKey("")
                               setExpandedDeleteKey("")
+                              if (section !== "all") {
+                                handleBack()
+                              }
                             }
                           }}
                           disabled={saving}
@@ -1203,6 +1206,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             if (saved) {
                               setEditingBlockKey("")
                               setExpandedDeleteKey("")
+                              if (section !== "all") {
+                                handleBack()
+                              }
                             }
                           }}
                           disabled={saving}

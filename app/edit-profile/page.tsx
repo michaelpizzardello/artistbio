@@ -168,7 +168,7 @@ export default function EditProfilePage() {
     if (upsertError) {
       setError(upsertError.message)
     } else {
-      setNotice("Profile saved.")
+      handleBack()
     }
     setSaving(false)
   }
