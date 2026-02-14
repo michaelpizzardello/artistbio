@@ -8,17 +8,17 @@ type DashboardBottomNavProps = {
 
 function navButtonClass(active: boolean): string {
   return `inline-flex h-full flex-col items-center justify-center gap-1 rounded-xl px-1 transition ${
-    active ? "text-[#1f251f]" : "text-[#5a6257] hover:bg-[#f3f4ef]"
+    active ? "text-foreground" : "text-muted-foreground hover:bg-muted"
   }`
 }
 
 function navLabelClass(active: boolean): string {
-  return `text-[10px] font-semibold leading-none ${active ? "text-[#1f251f]" : "text-[#5a6257]"}`
+  return `text-[11px] font-semibold leading-none ${active ? "text-foreground" : "text-muted-foreground"}`
 }
 
 export default function DashboardBottomNav({ activeTab, onMoreClick }: DashboardBottomNavProps) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#d5d7d1] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
       <nav aria-label="Dashboard navigation" className="mx-auto grid h-16 w-full max-w-md grid-cols-5 gap-1 px-2 pb-safe">
         <Link href="/app" aria-current={activeTab === "home" ? "page" : undefined} className={navButtonClass(activeTab === "home")}>
           <House className="size-5" />

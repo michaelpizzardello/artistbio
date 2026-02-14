@@ -3,41 +3,32 @@ import ArtistBioSection from "@/components/artists/ArtistBioSection"
 import ArtistArtworks from "@/components/artists/ArtistArtworks"
 import ArtistExhibitions from "@/components/artists/ArtistExhibitions"
 import MobileProfileMenu from "@/components/artists/MobileProfileMenu"
-import { loadArtistPageData, type ArtistProfile } from "@/lib/artist-profile"
+import { loadArtistPageData } from "@/lib/artist-profile"
 
 type PageProps = {
   params: Promise<{ username: string }>
 }
 
-function placeholderArtist(username: string): ArtistProfile {
-  const fallbackName = username
-    .split(/[._-]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
-
-  return {
-    username,
-    handle: username,
-    name: fallbackName || "Artist Name",
-    about: "Contemporary painter exploring memory and light.",
-    bioHtml:
-      "<p>This is temporary placeholder content so you can preview the artist page before connecting Supabase data.</p><p>Replace this with the artist biography once your profile table is fully linked.</p>",
-    cover: {
-      url: "https://picsum.photos/id/1015/1200/1500",
-      alt: "Placeholder hero image",
-    },
-  }
-}
-
 export default async function Page({ params }: PageProps) {
   const { username } = await params
   const loaded = await loadArtistPageData(username)
-  const placeholder = placeholderArtist(username)
-
-  const artist = loaded.artist ?? placeholder
+  const artist = loaded.artist
   const artworks = loaded.artworks
   const exhibitions = loaded.exhibitions
+
+  if (!artist) {
+    return (
+      <main className="min-h-screen bg-white px-6 py-12 text-neutral-900">
+        <section className="mx-auto max-w-xl rounded-2xl border border-neutral-200 bg-neutral-50 p-6 text-center">
+          <p className="typ-section-title">Profile unavailable</p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight">This artist page is not published yet.</h1>
+          <p className="mt-3 text-sm text-neutral-600">
+            Check the username and try again, or come back after the artist finishes publishing their profile.
+          </p>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="bg-white text-neutral-900">

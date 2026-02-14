@@ -20,39 +20,44 @@ export default function Page() {
   }, [usernameInput])
 
   return (
-    <main className="min-h-screen w-full bg-lime-300">
+    <main className="min-h-screen w-full bg-neutral-50 text-neutral-900">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <div className="text-xl font-semibold">artistb.io</div>
+        <p className="text-xl font-black tracking-tight">artistb.io</p>
 
-        <div className="flex items-center gap-3">
-          <Button asChild variant="secondary" className="rounded-full bg-white/70">
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary" className="rounded-full border border-border bg-background">
             <Link href="/login">Log in</Link>
           </Button>
-          <Button asChild className="rounded-full bg-black text-white hover:bg-black/90">
+          <Button asChild className="rounded-full bg-neutral-900 text-white hover:bg-neutral-800">
             <Link href="/signup">Sign up free</Link>
           </Button>
         </div>
       </header>
 
-      <section className="mx-auto max-w-5xl px-6 py-10">
-        <div className="max-w-xl">
-          <h1 className="text-5xl font-extrabold leading-tight text-green-950">
-            A link in bio for artists.
+      <section className="mx-auto max-w-5xl px-6 pb-12 pt-6">
+        <div className="max-w-2xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">Built for independent artists</p>
+          <h1 className="mt-4 text-balance text-4xl font-black leading-[0.95] tracking-tight text-neutral-900 sm:text-5xl">
+            Publish a profile that feels gallery-ready.
           </h1>
 
-          <p className="mt-5 text-lg leading-relaxed text-green-950/80">
-            A clean artist page with bio, artworks, exhibitions, news, and CV.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-neutral-600">
+            Manage your bio, artworks, exhibitions, and announcements in one calm dashboard, then share one clean link.
           </p>
 
-          <div className="mt-8 flex flex-col gap-4">
+          <div className="mt-8 flex flex-col gap-3">
+            <label htmlFor="landing-username" className="text-sm font-medium text-neutral-700">
+              Start with your URL
+            </label>
             <Input
-              className="h-14 rounded-2xl bg-white px-5 text-lg"
+              id="landing-username"
+              className="h-12 rounded-2xl bg-neutral-50 px-5 text-base"
               placeholder="artistb.io/yourname"
               value={usernameInput}
               onChange={(event) => setUsernameInput(event.target.value)}
             />
-            <Button asChild className="h-14 rounded-2xl bg-green-900 text-lg hover:bg-green-900/90">
-              <Link href={signupHref}>Get started for free</Link>
+            <Button asChild className="h-12 rounded-2xl bg-neutral-900 text-base text-white hover:bg-neutral-800">
+              <Link href={signupHref}>Claim your profile</Link>
             </Button>
           </div>
         </div>

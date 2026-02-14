@@ -40,38 +40,46 @@ export default function Page() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-lime-100 px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white/90 p-6 shadow-lg">
-        <h1 className="text-3xl font-bold text-green-950">Log in</h1>
-        <p className="mt-2 text-green-950/80">
-          Access your artist profile dashboard.
-        </p>
+    <main className="flex min-h-screen flex-col items-center bg-neutral-50 px-6 py-10 text-neutral-900">
+      <div className="w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-black tracking-tight">Log in</h1>
+        <p className="mt-2 text-neutral-600">Access your artist profile dashboard.</p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+          <div className="space-y-1.5">
+            <label htmlFor="login-email" className="text-sm font-medium text-neutral-700">
+              Email
+            </label>
+            <Input
+              id="login-email"
+              type="email"
+              placeholder="you@example.com"
+              className="h-11 rounded-xl bg-neutral-50"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="login-password" className="text-sm font-medium text-neutral-700">
+              Password
+            </label>
+            <Input
+              id="login-password"
+              type="password"
+              placeholder="Enter your password"
+              className="h-11 rounded-xl bg-neutral-50"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
           {error ? <p className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-          <Button
-            type="submit"
-            disabled={status === "submitting"}
-            className="rounded-full bg-green-900 text-lg text-white"
-          >
+          <Button type="submit" disabled={status === "submitting"} className="h-11 rounded-xl bg-neutral-900 text-base text-white hover:bg-neutral-800">
             {status === "submitting" ? "Logging in..." : "Log in"}
           </Button>
         </form>
-        <p className="mt-5 text-sm text-green-950/80">
+        <p className="mt-5 text-sm text-neutral-600">
           Need an account?{" "}
           <Link href="/signup" className="font-medium underline">
             Sign up

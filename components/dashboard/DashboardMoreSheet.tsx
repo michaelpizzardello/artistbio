@@ -81,15 +81,15 @@ export default function DashboardMoreSheet({ open, onClose }: DashboardMoreSheet
         aria-modal="true"
         aria-label="More dashboard sections"
         tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-md rounded-t-[28px] bg-[#f3f4ef] p-4 pb-8 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]"
+        className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-md rounded-t-[28px] bg-card p-4 pb-8 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-[#1f251f]">More</h2>
+          <h2 className="text-base font-semibold text-foreground">More</h2>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d5d8cf] bg-white text-[#1f251f]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-foreground"
             aria-label="Close more menu"
           >
             <X className="size-5" />
@@ -100,25 +100,25 @@ export default function DashboardMoreSheet({ open, onClose }: DashboardMoreSheet
           <Link
             href="/app/news-links"
             onClick={onClose}
-            className="flex min-h-12 items-center gap-3 rounded-xl border border-[#d7dacf] bg-white px-4 py-3 text-[#1f251f]"
+            className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           >
-            <Newspaper className="size-5 text-[#4d5749]" />
+            <Newspaper className="size-5 text-muted-foreground" />
             <span className="text-sm font-semibold">News &amp; Links</span>
           </Link>
           <Link
             href="/app/enquiries"
             onClick={onClose}
-            className="flex min-h-12 items-center gap-3 rounded-xl border border-[#d7dacf] bg-white px-4 py-3 text-[#1f251f]"
+            className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           >
-            <Mail className="size-5 text-[#4d5749]" />
+            <Mail className="size-5 text-muted-foreground" />
             <span className="text-sm font-semibold">Enquiries</span>
           </Link>
           <Link
             href="/app/settings"
             onClick={onClose}
-            className="flex min-h-12 items-center gap-3 rounded-xl border border-[#d7dacf] bg-white px-4 py-3 text-[#1f251f]"
+            className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-foreground"
           >
-            <Settings className="size-5 text-[#4d5749]" />
+            <Settings className="size-5 text-muted-foreground" />
             <span className="text-sm font-semibold">Settings</span>
           </Link>
         </div>

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd"
-import { ArchiveX, ChevronDown, ChevronUp, ChevronsUp, Eye, GripVertical, MoreHorizontal, Plus, Trash2, X } from "lucide-react"
+import { ArchiveX, ChevronDown, ChevronRight, ChevronUp, ChevronsUp, Eye, GripVertical, MoreHorizontal, Pencil, Plus, SquarePen, TextCursorInput, Trash2, UserRound, X } from "lucide-react"
+import ArtworksMiniPreview from "@/components/dashboard/ArtworksMiniPreview"
 import DashboardAddSheet from "@/components/dashboard/DashboardAddSheet"
 import DashboardBottomNav from "@/components/dashboard/DashboardBottomNav"
 import DashboardMediaEditCard from "@/components/dashboard/DashboardMediaEditCard"
@@ -13,6 +14,8 @@ import DashboardMoreSheet from "@/components/dashboard/DashboardMoreSheet"
 import DashboardProfileHeader from "@/components/dashboard/DashboardProfileHeader"
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader"
 import DashboardToggleSwitch from "@/components/dashboard/DashboardToggleSwitch"
+import ExhibitionsMiniPreview from "@/components/dashboard/ExhibitionsMiniPreview"
+import SectionPreviewCard from "@/components/dashboard/SectionPreviewCard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoadingScreen from "@/components/ui/loading-screen"
@@ -68,6 +71,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   const [draggingBlockKey, setDraggingBlockKey] = useState("")
   const [editingBlockKey, setEditingBlockKey] = useState("")
   const [expandedDeleteKey, setExpandedDeleteKey] = useState("")
+  const [expandedActionsKey, setExpandedActionsKey] = useState("")
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile)
@@ -843,7 +847,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
 
   if (!user) {
     return (
-      <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-6 py-12 text-[#182116]">
+      <main className="min-h-screen overflow-x-hidden bg-white px-6 py-12 text-[#182116]">
         <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 shadow-sm">
           <h1 className="text-3xl font-black">Artist Dashboard</h1>
           <p className="mt-3 text-[#52604f]">Log in to edit your profile, artworks, and exhibitions.</p>
@@ -890,6 +894,20 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
     exhibitions.filter((item) => item.id.startsWith("exhibition-temp-")).length +
     links.filter((item) => item.id.startsWith("link-temp-")).length +
     newsItems.filter((item) => item.id.startsWith("news-temp-")).length
+  const artworkDraftCount = artworks.filter((item) => item.id.startsWith("artwork-temp-")).length
+  const exhibitionDraftCount = exhibitions.filter((item) => item.id.startsWith("exhibition-temp-")).length
+  const linkDraftCount = links.filter((item) => item.id.startsWith("link-temp-")).length
+  const newsDraftCount = newsItems.filter((item) => item.id.startsWith("news-temp-")).length
+  const hasIdentityBasics = Boolean(profile.name.trim() && profile.username.trim())
+  const hasAbout = Boolean(profile.bioHtml.trim())
+  const nextStep =
+    !hasIdentityBasics || !hasAbout
+      ? { href: "/edit-profile", label: "Complete profile basics" }
+      : artworks.length === 0
+        ? { href: "/app/artworks", label: "Add your first artwork" }
+        : exhibitions.length === 0
+          ? { href: "/app/exhibitions", label: "Add your first exhibition" }
+          : { href: previewPath, label: "Review public profile" }
   const recentUpdates = [
     ...artworks.slice(0, 2).map((item) => ({
       id: `artwork-${item.id}`,
@@ -925,7 +943,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f3f4ef] px-4 py-8 pb-32 text-[#182116]">
+    <main className="min-h-screen overflow-x-hidden bg-white px-4 py-8 pb-32 text-[#182116]">
       <div className="mx-auto max-w-6xl">
         {section === "all" ? (
           <DashboardProfileHeader
@@ -944,51 +962,74 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
 
         {section === "all" ? (
           <div className="mt-6 space-y-5">
+            <section className="grid grid-cols-2 gap-4">
+              <SectionPreviewCard href="/app/artworks" label="Artworks" hasContent={artworks.length > 0} emptyMessage="No artworks yet">
+                <ArtworksMiniPreview artworks={artworks} />
+              </SectionPreviewCard>
+              <SectionPreviewCard href="/app/exhibitions" label="Exhibitions" hasContent={exhibitions.length > 0} emptyMessage="No exhibitions yet">
+                <ExhibitionsMiniPreview exhibitions={exhibitions} />
+              </SectionPreviewCard>
+            </section>
+
             <section className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <p className="font-medium text-[#283227]">{pendingDraftCount} drafts</p>
-                <p className="text-[#5f695c]">{artworks.length} artworks</p>
-                <p className="text-[#5f695c]">{exhibitions.length} exhibitions</p>
+              <div className="flex items-center justify-between text-sm">
+                <p className="font-semibold text-[#1f251f]">Workflow status</p>
+                <p className="text-[#5f695c]">{pendingDraftCount} drafts</p>
               </div>
-              {recentUpdates.length ? (
-                <div className="mt-4 border-t border-[#e5e9e1] pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6a7565]">Recent activity</p>
-                  <ul className="mt-2 space-y-2">
-                    {recentUpdates.map((item) => (
-                      <li key={item.id} className="flex items-center justify-between border-b border-[#edf1ea] py-2 text-sm text-[#273226] last:border-b-0">
-                        <span className="truncate">{item.title}</span>
-                        <span className="ml-2 shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#62705f]">
-                          {item.label}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-[#f4f6f1] px-2 py-2">
+                  <p className="text-base font-semibold text-[#1f251f]">{artworkDraftCount}</p>
+                  <p className="text-xs text-[#61705f]">Artwork</p>
                 </div>
+                <div className="rounded-xl bg-[#f4f6f1] px-2 py-2">
+                  <p className="text-base font-semibold text-[#1f251f]">{exhibitionDraftCount}</p>
+                  <p className="text-xs text-[#61705f]">Exhibition</p>
+                </div>
+                <div className="rounded-xl bg-[#f4f6f1] px-2 py-2">
+                  <p className="text-base font-semibold text-[#1f251f]">{linkDraftCount + newsDraftCount}</p>
+                  <p className="text-xs text-[#61705f]">News/Links</p>
+                </div>
+              </div>
+              <Link href={nextStep.href} className="mt-3 inline-flex rounded-lg bg-[#1f251f] px-3 py-2 text-sm font-semibold text-white">
+                {nextStep.label}
+              </Link>
+              {recentUpdates.length ? (
+                <p className="mt-3 text-xs text-[#5f695c]">Latest: {recentUpdates[0].title}</p>
               ) : null}
             </section>
           </div>
         ) : null}
 
         {section === "profile" ? (
-          <section className="mt-6 space-y-3">
-            <div className="grid gap-3">
-              <Link href="/edit-profile/identity" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-                <p className="text-sm font-semibold text-[#1f251f]">Identity</p>
-                <p className="mt-1 text-sm text-[#5a6757]">Name, username, and profile image</p>
-              </Link>
-              <Link href="/edit-profile/about" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-                <p className="text-sm font-semibold text-[#1f251f]">About</p>
-                <p className="mt-1 text-sm text-[#5a6757]">Bio and short personal statement</p>
-              </Link>
-              <Link href="/edit-profile/cv" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-                <p className="text-sm font-semibold text-[#1f251f]">CV</p>
-                <p className="mt-1 text-sm text-[#5a6757]">Career history and milestones</p>
-              </Link>
-              <Link href="/edit-profile/links" className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-                <p className="text-sm font-semibold text-[#1f251f]">Links & Contact</p>
-                <p className="mt-1 text-sm text-[#5a6757]">Social links and enquiry channels</p>
-              </Link>
-            </div>
+          <section className="mt-6 rounded-2xl border border-[#dce1d7] bg-white">
+            <Link href="/edit-profile/identity" className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
+              <span className="flex items-center gap-3 text-sm font-semibold text-[#1f251f]">
+                <UserRound className="size-4 text-[#70806d]" />
+                Identity
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+            </Link>
+            <Link href="/edit-profile/about" className="flex min-h-14 items-center justify-between gap-3 border-t border-[#e9ece4] px-4 py-3">
+              <span className="flex items-center gap-3 text-sm font-semibold text-[#1f251f]">
+                <TextCursorInput className="size-4 text-[#70806d]" />
+                About
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+            </Link>
+            <Link href="/edit-profile/cv" className="flex min-h-14 items-center justify-between gap-3 border-t border-[#e9ece4] px-4 py-3">
+              <span className="flex items-center gap-3 text-sm font-semibold text-[#1f251f]">
+                <SquarePen className="size-4 text-[#70806d]" />
+                CV
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+            </Link>
+            <Link href="/edit-profile/links" className="flex min-h-14 items-center justify-between gap-3 border-t border-[#e9ece4] px-4 py-3">
+              <span className="flex items-center gap-3 text-sm font-semibold text-[#1f251f]">
+                <SquarePen className="size-4 text-[#70806d]" />
+                Links & Contact
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+            </Link>
           </section>
         ) : null}
 
@@ -1002,22 +1043,40 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         ) : null}
 
         {section === "settings" ? (
-          <section className="mt-6 space-y-3">
-            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-              <p className="text-sm font-semibold text-[#1f251f]">Account details</p>
-              <p className="mt-1 text-sm text-[#5a6757]">Manage account email and profile ownership.</p>
+          <section className="mt-6 space-y-4">
+            <div className="rounded-2xl border border-[#dce1d7] bg-white">
+              <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#687463]">Account</p>
+              <Link href="/app/settings/account" className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-semibold text-[#1f251f]">Account details</span>
+                  <span className="block text-sm text-[#5a6757]">Email, profile ownership, and identity</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+              </Link>
+              <Link href="/app/settings/security" className="flex min-h-14 items-center justify-between gap-3 border-t border-[#e9ece4] px-4 py-3">
+                <span>
+                  <span className="block text-sm font-semibold text-[#1f251f]">Password & security</span>
+                  <span className="block text-sm text-[#5a6757]">Sign-in controls and account protection</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+              </Link>
             </div>
-            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-              <p className="text-sm font-semibold text-[#1f251f]">Password & security</p>
-              <p className="mt-1 text-sm text-[#5a6757]">Security settings and sign-in controls.</p>
-            </div>
-            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-              <p className="text-sm font-semibold text-[#1f251f]">Notifications</p>
-              <p className="mt-1 text-sm text-[#5a6757]">Choose what updates you receive.</p>
-            </div>
-            <div className="rounded-2xl border border-[#dce1d7] bg-white p-4">
-              <p className="text-sm font-semibold text-[#1f251f]">Privacy & visibility</p>
-              <p className="mt-1 text-sm text-[#5a6757]">Control public visibility and discovery.</p>
+            <div className="rounded-2xl border border-[#dce1d7] bg-white">
+              <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#687463]">Preferences</p>
+              <Link href="/app/settings/notifications" className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-semibold text-[#1f251f]">Notifications</span>
+                  <span className="block text-sm text-[#5a6757]">Choose which updates you receive</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+              </Link>
+              <Link href="/app/settings/privacy" className="flex min-h-14 items-center justify-between gap-3 border-t border-[#e9ece4] px-4 py-3">
+                <span>
+                  <span className="block text-sm font-semibold text-[#1f251f]">Privacy & visibility</span>
+                  <span className="block text-sm text-[#5a6757]">Public profile discovery controls</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-[#7b8678]" />
+              </Link>
             </div>
             <div className="rounded-2xl border border-dashed border-[#dce1d7] bg-white p-4">
               <p className="text-sm font-semibold text-[#1f251f]">Billing</p>
@@ -1101,6 +1160,8 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             moveToTopDisabled={listIndex === 0}
                             moveUpDisabled={listIndex === 0}
                             moveDownDisabled={listIndex === visibleBlockKeys.length - 1}
+                            isActionsOpen={expandedActionsKey === blockKey}
+                            onActionsOpenChange={(open) => setExpandedActionsKey(open ? blockKey : "")}
                             helperText={uploadingField === `artwork-${index}` ? "Uploading image..." : undefined}
                             renderDeleteDropdown={renderDeleteDropdown(blockKey)}
                           />
@@ -1174,6 +1235,8 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             moveToTopDisabled={listIndex === 0}
                             moveUpDisabled={listIndex === 0}
                             moveDownDisabled={listIndex === visibleBlockKeys.length - 1}
+                            isActionsOpen={expandedActionsKey === blockKey}
+                            onActionsOpenChange={(open) => setExpandedActionsKey(open ? blockKey : "")}
                             helperText={uploadingField === `exhibition-${index}` ? "Uploading image..." : undefined}
                             renderDeleteDropdown={renderDeleteDropdown(blockKey)}
                           />
@@ -1212,7 +1275,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             </button>
                             <div>
                               <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">Link</p>
-                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled link"}</p>
+                              <p className="mt-1 text-lg font-semibold text-[#1f251f]">{item.title || "Untitled link"}</p>
                               <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
                             </div>
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
@@ -1223,20 +1286,38 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
                               />
-                              <Button variant="outline" className="h-11" onClick={() => setEditingBlockKey(blockKey)}>
-                                Edit
+                              <Button
+                                variant="outline"
+                                className="h-11 w-11 p-0"
+                                onClick={() => setEditingBlockKey(blockKey)}
+                                aria-label={`Edit ${item.title || "link"}`}
+                              >
+                                <Pencil className="size-4" />
                               </Button>
-                              <details className="relative">
-                                <summary
-                                  className="inline-flex h-11 w-11 list-none items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5] [&::-webkit-details-marker]:hidden"
-                                  aria-label="More actions"
-                                >
-                                  <MoreHorizontal className="size-4" />
-                                </summary>
-                                <div className="absolute right-0 top-12 z-30 w-44 rounded-xl border border-[#d9ddd3] bg-white p-1 shadow-lg">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedActionsKey(expandedActionsKey === blockKey ? "" : blockKey)}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
+                                aria-label="More actions"
+                                aria-expanded={expandedActionsKey === blockKey}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </button>
+                              {expandedActionsKey === blockKey ? (
+                                <>
+                                <button
+                                  type="button"
+                                  className="fixed inset-0 z-50 bg-black/20"
+                                  aria-label="Close actions"
+                                  onClick={() => setExpandedActionsKey("")}
+                                />
+                                <div className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-md rounded-t-2xl border border-[#d9ddd3] bg-white p-2 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]">
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockToTop(blockKey)}
+                                    onClick={() => {
+                                      moveBlockToTop(blockKey)
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === 0}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1245,7 +1326,10 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockInVisibleList(blockKey, "up")}
+                                    onClick={() => {
+                                      moveBlockInVisibleList(blockKey, "up")
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === 0}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1254,7 +1338,10 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockInVisibleList(blockKey, "down")}
+                                    onClick={() => {
+                                      moveBlockInVisibleList(blockKey, "down")
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === visibleBlockKeys.length - 1}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1263,14 +1350,18 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                                    onClick={() => {
+                                      setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)
+                                      setExpandedActionsKey("")
+                                    }}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]"
                                   >
                                     <Trash2 className="size-4" />
                                     Delete or archive
                                   </button>
                                 </div>
-                              </details>
+                                </>
+                              ) : null}
                             </div>
                           </div>
                           {renderDeleteDropdown(blockKey)}
@@ -1309,7 +1400,7 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                             </button>
                             <div>
                               <p className="text-xs uppercase tracking-[0.12em] text-[#6f7868]">News</p>
-                              <p className="mt-1 text-xl font-semibold text-[#1f251f]">{item.title || "Untitled news"}</p>
+                              <p className="mt-1 text-lg font-semibold text-[#1f251f]">{item.title || "Untitled news"}</p>
                               <p className="mt-1 break-all text-sm text-[#5e6858]">{item.url || "No URL"}</p>
                             </div>
                             <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-auto sm:justify-end">
@@ -1320,20 +1411,38 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                                 }
                               />
-                              <Button variant="outline" className="h-11" onClick={() => setEditingBlockKey(blockKey)}>
-                                Edit
+                              <Button
+                                variant="outline"
+                                className="h-11 w-11 p-0"
+                                onClick={() => setEditingBlockKey(blockKey)}
+                                aria-label={`Edit ${item.title || "news item"}`}
+                              >
+                                <Pencil className="size-4" />
                               </Button>
-                              <details className="relative">
-                                <summary
-                                  className="inline-flex h-11 w-11 list-none items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5] [&::-webkit-details-marker]:hidden"
-                                  aria-label="More actions"
-                                >
-                                  <MoreHorizontal className="size-4" />
-                                </summary>
-                                <div className="absolute right-0 top-12 z-30 w-44 rounded-xl border border-[#d9ddd3] bg-white p-1 shadow-lg">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedActionsKey(expandedActionsKey === blockKey ? "" : blockKey)}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5]"
+                                aria-label="More actions"
+                                aria-expanded={expandedActionsKey === blockKey}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </button>
+                              {expandedActionsKey === blockKey ? (
+                                <>
+                                <button
+                                  type="button"
+                                  className="fixed inset-0 z-50 bg-black/20"
+                                  aria-label="Close actions"
+                                  onClick={() => setExpandedActionsKey("")}
+                                />
+                                <div className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-md rounded-t-2xl border border-[#d9ddd3] bg-white p-2 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]">
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockToTop(blockKey)}
+                                    onClick={() => {
+                                      moveBlockToTop(blockKey)
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === 0}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1342,7 +1451,10 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockInVisibleList(blockKey, "up")}
+                                    onClick={() => {
+                                      moveBlockInVisibleList(blockKey, "up")
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === 0}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1351,7 +1463,10 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => moveBlockInVisibleList(blockKey, "down")}
+                                    onClick={() => {
+                                      moveBlockInVisibleList(blockKey, "down")
+                                      setExpandedActionsKey("")
+                                    }}
                                     disabled={listIndex === visibleBlockKeys.length - 1}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
                                   >
@@ -1360,14 +1475,18 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)}
+                                    onClick={() => {
+                                      setExpandedDeleteKey(expandedDeleteKey === blockKey ? "" : blockKey)
+                                      setExpandedActionsKey("")
+                                    }}
                                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]"
                                   >
                                     <Trash2 className="size-4" />
                                     Delete or archive
                                   </button>
                                 </div>
-                              </details>
+                                </>
+                              ) : null}
                             </div>
                           </div>
                           {renderDeleteDropdown(blockKey)}
@@ -1388,9 +1507,9 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
       ) : null}
 
       {editingBlockKey ? (
-        <div className="fixed inset-0 z-50 overflow-x-hidden bg-[#f3f4ef]">
+        <div className="fixed inset-0 z-50 overflow-x-hidden bg-white">
           <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#dde2d7] bg-[#f3f4ef] px-4 py-3">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#dde2d7] bg-white px-4 py-3">
               <h2 className="text-xl font-semibold text-[#1f251f]">Edit Block</h2>
               <button
                 type="button"
@@ -1494,18 +1613,19 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           }
                         />
                       </div>
-                      <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
-                        <input
-                          type="checkbox"
+                      <div className="flex items-center justify-between rounded-xl border border-[#dde2d7] px-3 py-2">
+                        <p className="text-sm text-[#52604f]">Visible on public profile</p>
+                        <DashboardToggleSwitch
+                          size="sm"
                           checked={item.availableForSale}
-                          onChange={(event) =>
+                          ariaLabel={`Visibility for ${item.title || "untitled artwork"}`}
+                          onToggle={() =>
                             setArtworks((previous) =>
-                              previous.map((entry, i) => (i === index ? { ...entry, availableForSale: event.target.checked } : entry))
+                              previous.map((entry, i) => (i === index ? { ...entry, availableForSale: !entry.availableForSale } : entry))
                             )
                           }
                         />
-                        Visible
-                      </label>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={async () => {
@@ -1647,17 +1767,31 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           }
                         />
                       </div>
-                      <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
-                        <input
-                          type="checkbox"
-                          checked={!item.id.startsWith("exhibition-temp-") && item.enabled}
-                          disabled={item.id.startsWith("exhibition-temp-")}
-                          onChange={(event) =>
-                            setExhibitions((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: event.target.checked } : entry)))
-                          }
-                        />
-                        Visible
-                      </label>
+                      <div className="rounded-xl border border-[#dde2d7] px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm text-[#52604f]">Visible on public profile</p>
+                          <DashboardToggleSwitch
+                            size="sm"
+                            checked={!item.id.startsWith("exhibition-temp-") && item.enabled}
+                            disabled={item.id.startsWith("exhibition-temp-")}
+                            ariaLabel={`Visibility for ${item.title || "untitled exhibition"}`}
+                            onToggle={() =>
+                              setExhibitions((previous) =>
+                                previous.map((entry, i) =>
+                                  i === index
+                                    ? entry.id.startsWith("exhibition-temp-")
+                                      ? { ...entry, enabled: false }
+                                      : { ...entry, enabled: !entry.enabled }
+                                    : entry
+                                )
+                              )
+                            }
+                          />
+                        </div>
+                        {item.id.startsWith("exhibition-temp-") ? (
+                          <p className="mt-2 text-xs text-[#5f695c]">Save this draft first to enable visibility.</p>
+                        ) : null}
+                      </div>
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#556151]" htmlFor={`exhibition-summary-${item.id}`}>
                           Summary
@@ -1735,16 +1869,17 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           }
                         />
                       </div>
-                      <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
-                        <input
-                          type="checkbox"
+                      <div className="flex items-center justify-between rounded-xl border border-[#dde2d7] px-3 py-2">
+                        <p className="text-sm text-[#52604f]">Visible on public profile</p>
+                        <DashboardToggleSwitch
+                          size="sm"
                           checked={item.enabled}
-                          onChange={(event) =>
-                            setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: event.target.checked } : entry)))
+                          ariaLabel={`Visibility for ${item.title || "untitled link"}`}
+                          onToggle={() =>
+                            setLinks((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                           }
                         />
-                        Visible
-                      </label>
+                      </div>
                       <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
                         <Trash2 className="size-4" />
                       </Button>
@@ -1785,16 +1920,17 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
                           }
                         />
                       </div>
-                      <label className="inline-flex items-center gap-2 text-sm text-[#52604f]">
-                        <input
-                          type="checkbox"
+                      <div className="flex items-center justify-between rounded-xl border border-[#dde2d7] px-3 py-2">
+                        <p className="text-sm text-[#52604f]">Visible on public profile</p>
+                        <DashboardToggleSwitch
+                          size="sm"
                           checked={item.enabled}
-                          onChange={(event) =>
-                            setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: event.target.checked } : entry)))
+                          ariaLabel={`Visibility for ${item.title || "untitled news item"}`}
+                          onToggle={() =>
+                            setNewsItems((previous) => previous.map((entry, i) => (i === index ? { ...entry, enabled: !entry.enabled } : entry)))
                           }
                         />
-                        Visible
-                      </label>
+                      </div>
                       <Button variant="outline" onClick={() => setExpandedDeleteKey(expandedDeleteKey === editingBlockKey ? "" : editingBlockKey)}>
                         <Trash2 className="size-4" />
                       </Button>
@@ -1810,8 +1946,8 @@ export default function ArtistDashboard({ section = "all" }: { section?: Dashboa
         </div>
       ) : null}
 
-      {!editingBlockKey ? (
-        <div className="fixed bottom-20 right-4 z-40 flex items-center gap-2">
+      {!editingBlockKey && !expandedActionsKey && !expandedDeleteKey && !isAddSheetOpen && !isMoreSheetOpen ? (
+        <div className="fixed bottom-20 right-4 z-30 flex items-center gap-2">
           <Button asChild type="button" variant="outline" className="h-12 w-12 rounded-full border-[#cad1c2] bg-white/95 p-0" aria-label="Open preview">
             <Link href={previewPath} aria-label="Open preview">
               <Eye className="size-5" />

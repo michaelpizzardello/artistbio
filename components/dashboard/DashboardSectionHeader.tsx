@@ -15,11 +15,11 @@ export default function DashboardSectionHeader({ title, onBack, action }: Dashbo
           type="button"
           onClick={onBack}
           aria-label="Go back"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-transparent bg-[#f4f5f3] text-[#1f251f] transition hover:border-[#dfe3db]"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-muted text-foreground transition hover:border-border"
         >
-          <ChevronLeft className="size-5" />
+          <ChevronLeft className="size-4.5" />
         </button>
-        <h1 className="truncate text-2xl font-bold text-[#1f251f]">{title}</h1>
+        <h1 className="truncate text-xl font-semibold text-foreground">{title}</h1>
       </div>
       {action}
     </div>

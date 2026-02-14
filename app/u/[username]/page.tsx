@@ -8,7 +8,7 @@ type PageProps = {
 export default async function PreviewPage({ params }: PageProps) {
   const { username } = await params
   return (
-    <div className="min-h-screen bg-[#ececec]">
+    <div className="min-h-screen bg-neutral-100">
       <PreviewHeader label={`artistb.io/${username}`} />
       <div className="overflow-hidden rounded-t-[2rem] bg-white">
         <ArtistPage params={Promise.resolve({ username })} />

@@ -139,10 +139,10 @@ function SignupPageContent() {
           </Link>
         </div>
 
-        <h1 className="text-balance text-center text-4xl font-black leading-tight text-[#151a13] sm:text-5xl">
+        <h1 className="text-balance text-center text-3xl font-black leading-tight text-[#151a13] sm:text-4xl">
           Claim @{form.username || "yourname"} on artistb.io
         </h1>
-        <p className="mt-4 text-center text-2xl text-[#5a6255]">
+        <p className="mt-3 text-center text-lg text-[#5a6255]">
           {step === "username" ? "Pick your username first" : "Sign up for free"}
         </p>
 
@@ -152,14 +152,14 @@ function SignupPageContent() {
 
         {step === "username" ? (
           <div className="mt-12 space-y-4">
-            <label className="sr-only" htmlFor="username">
+            <label className="block text-sm font-medium text-[#344033]" htmlFor="username">
               Username
             </label>
             <Input
               id="username"
               placeholder="Username (letters, numbers, dots or underscores)"
               autoComplete="username"
-              className="h-14 rounded-2xl border-0 bg-[#e8ebe2] px-5 text-lg shadow-none"
+              className="h-12 rounded-2xl border-0 bg-[#e8ebe2] px-4 text-base shadow-none"
               value={form.username}
               onChange={(event) => {
                 setForm((previous) => ({ ...previous, username: event.target.value.toLowerCase() }))
@@ -171,7 +171,7 @@ function SignupPageContent() {
             <Button
               type="button"
               onClick={goToMethodStep}
-              className="h-14 w-full rounded-2xl bg-[#2a3b28] text-lg font-semibold text-white hover:bg-[#223120]"
+              className="h-12 w-full rounded-2xl bg-[#2a3b28] text-base font-semibold text-white hover:bg-[#223120]"
             >
               Continue
             </Button>
@@ -183,7 +183,7 @@ function SignupPageContent() {
             <Button
               type="button"
               onClick={goToCredentialsStep}
-              className="h-14 w-full rounded-2xl bg-[#2a3b28] text-lg font-semibold text-white hover:bg-[#223120]"
+              className="h-12 w-full rounded-2xl bg-[#2a3b28] text-base font-semibold text-white hover:bg-[#223120]"
             >
               Continue with email
             </Button>
@@ -200,7 +200,7 @@ function SignupPageContent() {
 
         {step === "credentials" ? (
           <form onSubmit={handleSubmit} className="mt-12 space-y-4">
-            <label className="sr-only" htmlFor="email">
+            <label className="block text-sm font-medium text-[#344033]" htmlFor="email">
               Email
             </label>
             <Input
@@ -208,7 +208,7 @@ function SignupPageContent() {
               type="email"
               placeholder="Email"
               autoComplete="email"
-              className="h-14 rounded-2xl border-0 bg-[#e8ebe2] px-5 text-lg shadow-none"
+              className="h-12 rounded-2xl border-0 bg-[#e8ebe2] px-4 text-base shadow-none"
               value={form.email}
               onChange={(event) => {
                 setForm((previous) => ({ ...previous, email: event.target.value }))
@@ -218,7 +218,7 @@ function SignupPageContent() {
               required
             />
 
-            <label className="sr-only" htmlFor="password">
+            <label className="block text-sm font-medium text-[#344033]" htmlFor="password">
               Password
             </label>
             <Input
@@ -226,7 +226,7 @@ function SignupPageContent() {
               type="password"
               placeholder="Password (8+ characters)"
               autoComplete="new-password"
-              className="h-14 rounded-2xl border-0 bg-[#e8ebe2] px-5 text-lg shadow-none"
+              className="h-12 rounded-2xl border-0 bg-[#e8ebe2] px-4 text-base shadow-none"
               value={form.password}
               onChange={(event) => {
                 setForm((previous) => ({ ...previous, password: event.target.value }))
@@ -236,7 +236,7 @@ function SignupPageContent() {
               required
             />
 
-            <label className="sr-only" htmlFor="confirm-password">
+            <label className="block text-sm font-medium text-[#344033]" htmlFor="confirm-password">
               Confirm password
             </label>
             <Input
@@ -244,7 +244,7 @@ function SignupPageContent() {
               type="password"
               placeholder="Confirm password"
               autoComplete="new-password"
-              className="h-14 rounded-2xl border-0 bg-[#e8ebe2] px-5 text-lg shadow-none"
+              className="h-12 rounded-2xl border-0 bg-[#e8ebe2] px-4 text-base shadow-none"
               value={form.confirmPassword}
               onChange={(event) => {
                 setForm((previous) => ({ ...previous, confirmPassword: event.target.value }))
@@ -279,7 +279,7 @@ function SignupPageContent() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="h-14 w-full rounded-2xl bg-[#2a3b28] text-lg font-semibold text-white hover:bg-[#223120] disabled:bg-[#c8cec4] disabled:text-[#8c9587]"
+              className="h-12 w-full rounded-2xl bg-[#2a3b28] text-base font-semibold text-white hover:bg-[#223120] disabled:bg-[#c8cec4] disabled:text-[#8c9587]"
             >
               {continueLabel}
             </Button>
@@ -304,7 +304,7 @@ function SignupPageContent() {
           </p>
         ) : null}
 
-        <p className="mt-8 text-center text-lg text-[#5c6558]">
+        <p className="mt-8 text-center text-base text-[#5c6558]">
           Already have an account?{" "}
           <Link href="/login" className="font-semibold text-[#2d4530] underline">
             Log in

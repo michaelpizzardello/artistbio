@@ -1,0 +1,58 @@
+ARTISTB.IO UI CRITIQUE (BRUTALLY HONEST, POST-POLISH PASS)
+Date: 2026-02-14
+Benchmark: Instagram creator settings/edit flows + Linktree dashboard speed/clarity.
+
+Reality check
+The product improved in this pass, but it is still not at Instagram/Linktree level.
+It now looks less like a rough prototype, but still behaves like one in key workflows.
+
+Current score (out of 10)
+- Cohesion across surfaces: 5/10
+- Visual hierarchy: 5/10
+- Interaction trust: 5/10
+- Flow clarity: 4/10
+- Premium execution: 4/10
+- Instagram/Linktree parity: 3/10
+
+What is still weak (scathing version)
+1) The dashboard editing model is still architecturally messy.
+- The “Edit Block” overlay is a monolithic form surface pretending to be modular.
+- This is the opposite of Instagram-style focused editing and Linktree-style speed-to-publish.
+- It asks users to parse too much in one place and leaks implementation complexity into UX.
+
+2) Surface quality is still inconsistent.
+- Marketing/auth/public/legal now feel more coherent than before, but dashboard internals remain style-fragmented.
+- Some components use tokenized semantics while others still rely on ad-hoc hardcoded values.
+- Result: the app still feels partially unified, not intentionally systemized.
+
+3) Feature trust is still fragile in important areas.
+- News/Links are still local-draft only and not persisted to backend.
+- Upload flows still do not expose explicit retry affordances after failure.
+- Users can’t fully trust that all actions map to durable outcomes.
+
+4) Empty/unauth states are too thin for a premium product.
+- Unauth dashboard states are functional but visually low-information and emotionally flat.
+- Compared to Linktree, “next best action” guidance and confidence cues are weak.
+
+5) Public profile quality is no longer fake, but still not brand-defining.
+- Removing placeholder biography/image was the right move.
+- However, the public presentation still lacks distinctive editorial personality and motion polish.
+
+What improved in this pass
+- Placeholder fake profile fallback was removed; public unknown profiles now show honest unavailable state.
+- Edit overlay checkboxes were replaced with consistent switch controls.
+- Settings detail toggles are now stateful and persisted locally.
+- Landing and login hierarchy/readability improved with clearer labels and calmer visual direction.
+- Legal pages moved from obvious placeholder stubs to structured branded templates.
+- Mini preview typography was normalized to reduce jagged hierarchy.
+
+Bottom line
+This is now closer to a serious MVP, but still below the “premium consumer app” bar in your own docs.
+If the benchmark is Instagram + Linktree, the biggest remaining blocker is interaction model quality in edit/publish workflows, not just visual styling.
+
+Hard priority next moves (in order)
+1) Replace monolithic Edit Block overlay with true step-based create/edit flows.
+2) Complete dashboard token migration and eliminate remaining ad-hoc color/type drift.
+3) Persist News/Links to backend and add explicit upload retry UX.
+4) Upgrade dashboard empty/unauth states with stronger orientation and trust cues.
+5) Add subtle but consistent motion/state feedback across create/save/publish flows.

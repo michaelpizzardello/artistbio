@@ -1,19 +1,23 @@
 type DashboardToggleSwitchProps = {
   checked: boolean
   onToggle: () => void
-  size?: "sm" | "md"
+  size?: "xs" | "sm" | "md"
   ariaLabel: string
   disabled?: boolean
 }
 
 const sizeClassMap = {
+  xs: {
+    button: "h-7 w-11 p-0.5",
+    thumb: "size-4",
+  },
   sm: {
     button: "h-8 w-12 p-0.5",
-    thumb: "size-6",
+    thumb: "size-5",
   },
   md: {
     button: "h-9 w-14 p-0.5",
-    thumb: "size-7",
+    thumb: "size-6",
   },
 }
 
@@ -34,8 +38,8 @@ export default function DashboardToggleSwitch({
       aria-checked={checked}
       aria-label={ariaLabel}
       disabled={disabled}
-      className={`${style.button} inline-flex items-center rounded-full border transition ${
-        checked ? "border-green-700 bg-green-700" : "border-[#c7ccbf] bg-[#cfd4c7]"
+      className={`${style.button} inline-flex items-center rounded-full border transition focus-visible:border-ring focus-visible:ring-ring/40 focus-visible:ring-[3px] ${
+        checked ? "border-primary bg-primary" : "border-border bg-muted"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span className={`block rounded-full bg-white transition ${style.thumb} ${checked ? "translate-x-full" : "translate-x-0"}`} />

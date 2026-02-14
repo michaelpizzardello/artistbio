@@ -1,5 +1,5 @@
-import EditProfileEditor from "@/components/dashboard/EditProfileEditor"
+import EditProfileOverview from "@/components/dashboard/EditProfileOverview"
 
 export default function EditProfilePage() {
-  return <EditProfileEditor section="identity" />
+  return <EditProfileOverview />
 }

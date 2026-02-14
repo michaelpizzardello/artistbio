@@ -22,6 +22,13 @@ Current code snapshot (verified)
   - app/edit-profile/page.tsx
   - app/edit-profile/[section]/page.tsx
   - components/dashboard/EditProfileEditor.tsx
+- Edit Profile now follows list-first workflow with focused section screens:
+  - components/dashboard/EditProfileOverview.tsx
+  - components/dashboard/EditProfileEditor.tsx
+- Settings now uses grouped list-row IA with drill-in section routes:
+  - components/dashboard/ArtistDashboard.tsx
+  - app/app/settings/[section]/page.tsx
+  - components/dashboard/SettingsDetailView.tsx
 - Identity editor includes server-backed username availability check:
   - components/dashboard/EditProfileEditor.tsx:161
 
@@ -34,20 +41,26 @@ Benchmarked against:
 
 P0 findings (must fix for premium parity)
 
-[ ] Replace native checkbox toggles inside edit overlay with shared switch component
+[x] Replace native checkbox toggles inside edit overlay with shared switch component
 - Why: mixed toggle patterns break cohesion and feel non-productized versus Linktree/Instagram consistency.
 - Evidence:
-  - components/dashboard/ArtistDashboard.tsx:1497
-  - components/dashboard/ArtistDashboard.tsx:1650
-  - components/dashboard/ArtistDashboard.tsx:1738
-  - components/dashboard/ArtistDashboard.tsx:1788
+  - components/dashboard/ArtistDashboard.tsx
+  - components/dashboard/DashboardToggleSwitch.tsx
 
-[ ] Redesign Settings screen to native list-row IA (Instagram/Linktree parity)
+[x] Redesign Settings screen to native list-row IA (Instagram/Linktree parity)
 - Why: current settings UI is static informational cards, while benchmark apps use tappable grouped rows with clear drill-in affordance, hierarchy, and account/security prioritization.
 - Evidence:
   - components/dashboard/ArtistDashboard.tsx:1005
-  - components/dashboard/ArtistDashboard.tsx:1006
-  - components/dashboard/ArtistDashboard.tsx:1022
+  - app/app/settings/[section]/page.tsx
+  - components/dashboard/SettingsDetailView.tsx
+
+[x] Redesign Edit Profile surface to Instagram-style native form hierarchy
+- Why: current Edit Profile relies on pill-tab navigation + decorative section card + uppercase micro-label pattern that reads dashboard-like rather than native account editing; benchmark apps prioritize simple stacked fields, row-based drill-ins, and tighter visual hierarchy.
+- Evidence:
+  - components/dashboard/EditProfileOverview.tsx
+  - components/dashboard/EditProfileEditor.tsx:319
+  - components/dashboard/EditProfileEditor.tsx:351
+  - app/edit-profile/page.tsx
 
 [ ] Break monolithic “Edit Block” overlay into step-based flows
 - Why: violates progressive disclosure and one-task-per-step standards from dashboard docs and benchmark guide.
@@ -59,25 +72,32 @@ P0 findings (must fix for premium parity)
 [ ] Replace hardcoded color-heavy styling with tokenized system in dashboard surfaces
 - Why: visual cohesion drift; docs call for token discipline and no ad-hoc style drift.
 - Evidence:
-  - components/dashboard/ArtistDashboard.tsx:1391
-  - components/dashboard/DashboardAddSheet.tsx:66
-  - components/dashboard/DashboardMediaEditCard.tsx:69
+  - components/dashboard/ArtistDashboard.tsx
+  - components/dashboard/DashboardMediaEditCard.tsx
+- In progress:
+  - components/dashboard/DashboardAddSheet.tsx
+  - components/dashboard/DashboardBottomNav.tsx
+  - components/dashboard/DashboardMoreSheet.tsx
+  - components/dashboard/DashboardSectionHeader.tsx
+  - components/dashboard/DashboardProfileHeader.tsx
 
-[ ] Normalize typography scale for mini preview cards to avoid one-off pixel sizes
+[x] Normalize typography scale for mini preview cards to avoid one-off pixel sizes
 - Why: current text size mix reads uneven and below premium benchmark polish.
 - Evidence:
-  - components/dashboard/ArtworksMiniPreview.tsx:11
-  - components/dashboard/ArtworksMiniPreview.tsx:27
-  - components/dashboard/ExhibitionsMiniPreview.tsx:11
-  - components/dashboard/ExhibitionsMiniPreview.tsx:27
+  - components/dashboard/ArtworksMiniPreview.tsx
+  - components/dashboard/ExhibitionsMiniPreview.tsx
 
-[ ] Remove placeholder fallback content on public artist page before production release
+[x] Remove placeholder fallback content on public artist page before production release
 - Why: placeholder editorial copy/image undermines trust and premium feel.
 - Evidence:
-  - app/[username]/page.tsx:25
-  - app/[username]/page.tsx:27
+  - app/[username]/page.tsx
 
 P1 findings (important, not blocking current micro-polish pass)
+
+[x] Make settings detail toggles stateful and persisted locally
+- Why: no-op controls reduce trust and feel unfinished versus benchmark apps.
+- Evidence:
+  - components/dashboard/SettingsDetailView.tsx
 
 [ ] Persist News/Links in Supabase
 - Current behavior remains local draft persistence only.

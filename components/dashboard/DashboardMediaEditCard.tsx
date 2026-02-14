@@ -1,8 +1,7 @@
 import Image from "next/image"
 import type { CSSProperties } from "react"
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
-import { ChevronDown, ChevronUp, ChevronsUp, GripVertical, MoreHorizontal, Share2, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronDown, ChevronUp, ChevronsUp, GripVertical, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react"
 import DashboardToggleSwitch from "@/components/dashboard/DashboardToggleSwitch"
 
 type DashboardMediaEditCardProps = {
@@ -30,6 +29,8 @@ type DashboardMediaEditCardProps = {
   moveToTopDisabled: boolean
   moveUpDisabled: boolean
   moveDownDisabled: boolean
+  isActionsOpen: boolean
+  onActionsOpenChange: (open: boolean) => void
   helperText?: string
   renderDeleteDropdown: React.ReactNode
 }
@@ -59,105 +60,145 @@ export default function DashboardMediaEditCard({
   moveToTopDisabled,
   moveUpDisabled,
   moveDownDisabled,
+  isActionsOpen,
+  onActionsOpenChange,
   helperText,
   renderDeleteDropdown,
 }: DashboardMediaEditCardProps) {
   return (
     <article
       data-block-key={blockKey}
-      className={`relative rounded-2xl border bg-white p-3 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
-        isDragging ? "border-[#48603f] opacity-70 shadow-md" : "border-[#dde2d7]"
+      className={`rounded-2xl border bg-card p-3 shadow-sm transition-[opacity,box-shadow,border-color] duration-200 ${
+        isDragging ? "border-primary opacity-75 shadow-md" : "border-border"
       }`}
       style={style}
     >
-      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[106px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-2.5">
         <button
           type="button"
           data-drag-handle="true"
           {...dragHandleProps}
-          className="touch-none absolute left-4 top-4 z-10 inline-flex h-11 w-11 -translate-x-1 -translate-y-1 cursor-grab items-center justify-center rounded-full border border-[#e3e7de] bg-white text-[#88917f] shadow-sm active:cursor-grabbing"
+          className="touch-none mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground active:cursor-grabbing"
           style={{ cursor: isDragging ? "grabbing" : "grab" }}
           aria-label={`Reorder ${label.toLowerCase()} by drag`}
         >
-          <GripVertical className="size-4" />
+          <GripVertical className="size-3.5" />
         </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="col-start-1 row-span-2 h-24 w-24 overflow-hidden rounded-2xl border border-[#e5e8df] bg-[#f4f6f1] sm:h-[106px] sm:w-[106px]"
-        >
-          {imageUrl ? (
-            <Image src={imageUrl} alt={imageAlt} width={106} height={106} unoptimized className="h-full w-full object-cover" />
-          ) : null}
-        </button>
-        <div className="col-start-2 min-w-0">
-          {showLabel ? <p className="text-[11px] uppercase tracking-[0.1em] text-[#6f7868]">{label}</p> : null}
-          <button type="button" onClick={onEdit} className="w-full text-left">
-            <p className="mt-1 truncate text-lg font-semibold leading-tight text-[#1f251f]">{title}</p>
-          </button>
-          <p className="mt-1 truncate text-xs text-[#5e6858]">{subline}</p>
-          <p className="mt-2 text-sm font-semibold text-[#1f251f]">{meta}</p>
-        </div>
-        <div className="col-start-2 flex items-end justify-end gap-1.5 self-end">
-          <Button type="button" variant="outline" size="sm" onClick={onEdit} className="h-11 px-3">
-            Edit
-          </Button>
-          <DashboardToggleSwitch
-            size="sm"
-            checked={toggleChecked}
-            onToggle={onToggle}
-            ariaLabel={toggleAriaLabel}
-            disabled={toggleLocked}
-          />
-          <details className="relative">
-            <summary
-              className="inline-flex h-11 w-11 list-none items-center justify-center rounded-md border border-[#d6dbd0] text-[#596451] transition hover:border-[#aeb6a5] [&::-webkit-details-marker]:hidden"
-              aria-label="More actions"
+
+        <div className="min-w-0">
+          {showLabel ? <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p> : null}
+
+          <div className="mt-0.5 flex items-start gap-2">
+            <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left">
+              <p className="truncate text-lg font-semibold leading-tight text-foreground">{title}</p>
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+              aria-label={`Edit ${label.toLowerCase()}`}
             >
-              <MoreHorizontal className="size-4" />
-            </summary>
-            <div className="absolute right-0 top-12 z-30 w-44 rounded-xl border border-[#d9ddd3] bg-white p-1 shadow-lg">
-              <button type="button" onClick={onShare} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]">
-                <Share2 className="size-4" />
-                Share
-              </button>
-              <button
-                type="button"
-                onClick={onMoveToTop}
-                disabled={moveToTopDisabled}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
-              >
-                <ChevronsUp className="size-4" />
-                Move to top
-              </button>
-              <button
-                type="button"
-                onClick={onMoveUp}
-                disabled={moveUpDisabled}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
-              >
-                <ChevronUp className="size-4" />
-                Move up
-              </button>
-              <button
-                type="button"
-                onClick={onMoveDown}
-                disabled={moveDownDisabled}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1] disabled:opacity-45"
-              >
-                <ChevronDown className="size-4" />
-                Move down
-              </button>
-              <button type="button" onClick={onDelete} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[#30402f] hover:bg-[#f4f6f1]">
-                <Trash2 className="size-4" />
-                Delete or archive
-              </button>
+              <Pencil className="size-3.5" />
+            </button>
+          </div>
+
+          <p className="mt-1 truncate text-sm text-muted-foreground">{subline}</p>
+
+          <div className="mt-2.5 grid grid-cols-[64px_minmax(0,1fr)] gap-2.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="h-16 w-16 overflow-hidden rounded-lg border border-border bg-muted"
+              aria-label={`Edit ${label.toLowerCase()} image`}
+            >
+              {imageUrl ? (
+                <Image src={imageUrl} alt={imageAlt} width={64} height={64} unoptimized className="h-full w-full object-cover" />
+              ) : null}
+            </button>
+            <div className="min-w-0 self-center">
+              <p className="truncate text-base font-semibold text-foreground">{meta}</p>
+              {helperText ? <p className="mt-0.5 text-xs text-muted-foreground">{helperText}</p> : null}
             </div>
-          </details>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={onShare}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+            aria-label={`Share ${label.toLowerCase()}`}
+          >
+            <Share2 className="size-3.5" />
+          </button>
+          <DashboardToggleSwitch size="xs" checked={toggleChecked} onToggle={onToggle} ariaLabel={toggleAriaLabel} disabled={toggleLocked} />
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+            aria-label="More actions"
+            aria-expanded={isActionsOpen}
+            onClick={() => onActionsOpenChange(!isActionsOpen)}
+          >
+            <MoreHorizontal className="size-3.5" />
+          </button>
         </div>
       </div>
-      {toggleLocked ? <p className="mt-2 text-xs text-[#6f7868]">Unsaved draft stays hidden until saved.</p> : null}
-      {helperText ? <p className="mt-2 text-xs text-[#4f5b49]">{helperText}</p> : null}
+
+      {toggleLocked ? <p className="mt-2 text-xs text-muted-foreground">Unsaved draft stays hidden until saved.</p> : null}
+
+      {isActionsOpen ? (
+        <>
+          <button type="button" className="fixed inset-0 z-50 bg-black/20" aria-label="Close actions" onClick={() => onActionsOpenChange(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-md rounded-t-2xl border border-border bg-card p-2 shadow-[0_-10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onActionsOpenChange(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground"
+                aria-label="Close actions"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <button type="button" onClick={() => { onShare(); onActionsOpenChange(false) }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted">
+              <Share2 className="size-4" />
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={() => { onMoveToTop(); onActionsOpenChange(false) }}
+              disabled={moveToTopDisabled}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-45"
+            >
+              <ChevronsUp className="size-4" />
+              Move to top
+            </button>
+            <button
+              type="button"
+              onClick={() => { onMoveUp(); onActionsOpenChange(false) }}
+              disabled={moveUpDisabled}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-45"
+            >
+              <ChevronUp className="size-4" />
+              Move up
+            </button>
+            <button
+              type="button"
+              onClick={() => { onMoveDown(); onActionsOpenChange(false) }}
+              disabled={moveDownDisabled}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-45"
+            >
+              <ChevronDown className="size-4" />
+              Move down
+            </button>
+            <button type="button" onClick={() => { onDelete(); onActionsOpenChange(false) }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted">
+              <Trash2 className="size-4" />
+              Delete or archive
+            </button>
+          </div>
+        </>
+      ) : null}
+
       {renderDeleteDropdown}
     </article>
   )
