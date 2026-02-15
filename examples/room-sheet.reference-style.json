@@ -1,0 +1,29 @@
+{
+  "headingPrefix": "Group Exhibition",
+  "exhibitionTitle": "Superposition",
+  "artist": "Group Exhibition",
+  "dateLabel": "13 - 29 November",
+  "shortText": "",
+  "logoUrl": "",
+  "contact": {
+    "galleryName": "OUTSIDER GALLERY",
+    "email": "info@outsidergallery.au",
+    "phone": "0422 509 508",
+    "address": "144 Commercial St, Surrey Hills",
+    "website": "www.outsidergallery.au"
+  },
+  "artworks": [
+    {"title":"Tommy Carman", "year":"Gaze averse, 2025", "medium":"Acrylic on canvas", "dimensions":"20 x 30 cm", "price":"$550", "image":"https://dummyimage.com/500x500/6b0f0f/ffffff.jpg&text=1"},
+    {"title":"Tommy Carman", "year":"Blue Mercies, 2025", "medium":"Acrylic on canvas", "dimensions":"25 x 35 cm", "price":"$600", "image":"https://dummyimage.com/500x500/13215e/ffffff.jpg&text=2"},
+    {"title":"Tommy Carman", "year":"Charm offensive, 2025", "medium":"Acrylic on canvas", "dimensions":"40 x 65 cm", "price":"$850", "image":"https://dummyimage.com/500x500/7f2b2b/ffffff.jpg&text=3"},
+    {"title":"Tommy Carman", "year":"Bedside manner, 2025", "medium":"Acrylic on canvas", "dimensions":"50 x 180 cm", "price":"$950", "image":"https://dummyimage.com/500x500/1d2d7d/ffffff.jpg&text=4"},
+    {"title":"Jeremy Kirwan-Ward", "year":"Collapsing Space #10, 2024", "medium":"Acrylic on canvas", "dimensions":"122 x 153 cm", "price":"$1,100", "image":"https://dummyimage.com/500x500/5d4b77/ffffff.jpg&text=5"},
+    {"title":"Jeremy Kirwan-Ward", "year":"Inside Out #4, 2021", "medium":"Acrylic on canvas", "dimensions":"137 x 153 cm", "price":"$12,000", "image":"https://dummyimage.com/500x500/2f3549/ffffff.jpg&text=6"},
+    {"title":"Jeremy Kirwan-Ward", "year":"Soundworks (Into Four) #2, 2025", "medium":"Acrylic on canvas", "dimensions":"95 x 90 cm", "price":"$5,000", "image":"https://dummyimage.com/500x500/4d1f39/ffffff.jpg&text=7"},
+    {"title":"Jeremy Kirwan-Ward", "year":"Soundworks (Into Four) #1, 2025", "medium":"Acrylic on canvas", "dimensions":"95 x 90 cm", "price":"$5,000", "image":"https://dummyimage.com/500x500/7a6a1f/ffffff.jpg&text=8"},
+    {"title":"Helen Smith", "year":"Blue Highway #58, 2024", "medium":"Oil and oil stick on linen on board", "dimensions":"137 x 101 cm", "price":"$3,000", "image":"https://dummyimage.com/500x500/6d6d6d/ffffff.jpg&text=9"},
+    {"title":"Helen Smith", "year":"Blue Highway #51, 2021", "medium":"Oil on linen", "dimensions":"213 x 137 cm", "price":"$13,200", "image":"https://dummyimage.com/500x500/8a8a8a/ffffff.jpg&text=10"},
+    {"title":"Lachlan Warner", "year":"Compost Buddha 2, 2024", "medium":"Compost on board", "dimensions":"75 x 59 x 79 cm", "price":"Price on request", "image":"https://dummyimage.com/500x500/7a6348/ffffff.jpg&text=11"},
+    {"title":"Lachlan Warner", "year":"Gold on the Back of Buddha, 2025", "medium":"Gold leaf on plaster on wooden base", "dimensions":"40 x 47 x 37 cm", "price":"$1,600", "image":"https://dummyimage.com/500x500/c4a74a/ffffff.jpg&text=12"}
+  ]
+}

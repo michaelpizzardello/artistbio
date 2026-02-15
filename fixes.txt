@@ -117,3 +117,13 @@ P2 findings (defer)
 Validation snapshot
 - npm run lint: pass (2026-02-14)
 - npm run build: pass (2026-02-14)
+
+Local tooling (private workflow)
+
+[x] Add standalone room-sheet PDF generator for exhibition printouts
+- Why: support on-demand internal print workflow without shipping new website UI.
+- Evidence:
+  - scripts/generate-room-sheet.mjs
+  - examples/room-sheet.sample.json
+  - docs/room-sheet-generator.md
+  - package.json

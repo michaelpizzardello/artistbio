@@ -1,4 +1,3 @@
-import Image from "next/image"
 import type { CSSProperties } from "react"
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
 import { ChevronDown, ChevronUp, ChevronsUp, GripVertical, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react"
@@ -33,6 +32,19 @@ type DashboardMediaEditCardProps = {
   onActionsOpenChange: (open: boolean) => void
   helperText?: string
   renderDeleteDropdown: React.ReactNode
+}
+
+function toSupabaseThumbUrl(url: string, size: number): string {
+  if (!url) return url
+  try {
+    const parsed = new URL(url)
+    if (!parsed.pathname.includes("/storage/v1/object/public/")) return url
+
+    const objectPath = parsed.pathname.replace("/storage/v1/object/public/", "")
+    return `${parsed.origin}/storage/v1/render/image/public/${objectPath}?width=${size}&height=${size}&resize=cover&quality=70`
+  } catch {
+    return url
+  }
 }
 
 export default function DashboardMediaEditCard({
@@ -111,9 +123,7 @@ export default function DashboardMediaEditCard({
               className="h-16 w-16 overflow-hidden rounded-lg border border-border bg-muted"
               aria-label={`Edit ${label.toLowerCase()} image`}
             >
-              {imageUrl ? (
-                <Image src={imageUrl} alt={imageAlt} width={64} height={64} unoptimized className="h-full w-full object-cover" />
-              ) : null}
+              {imageUrl ? <img src={toSupabaseThumbUrl(imageUrl, 128)} alt={imageAlt} width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" /> : null}
             </button>
             <div className="min-w-0 self-center">
               <p className="truncate text-base font-semibold text-foreground">{meta}</p>

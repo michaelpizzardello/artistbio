@@ -1,0 +1,48 @@
+{
+  "exhibitionTitle": "Signals in Quiet Rooms",
+  "artist": "Randy Lahey",
+  "startDate": "2026-03-05",
+  "endDate": "2026-04-18",
+  "shortText": "Signals in Quiet Rooms explores memory traces, private rituals, and built environments through layered painting and mixed-media assemblage.",
+  "longText": "Across this new body of work, Lahey combines muted palettes with hard-edged geometric interruptions. The exhibition reflects on how domestic spaces hold emotional residue over time and how repeated gestures can transform familiar rooms into unstable psychological landscapes.",
+  "logoUrl": "https://dummyimage.com/400x120/000/fff.png&text=Gallery+Logo",
+  "contact": {
+    "galleryName": "North End Gallery",
+    "email": "info@northendgallery.com",
+    "phone": "+1 (212) 555-0148",
+    "address": "245 Mercer Street, New York, NY 10012",
+    "website": "www.northendgallery.com"
+  },
+  "artworks": [
+    {
+      "title": "Threshold Study No. 2",
+      "image": "https://dummyimage.com/700x900/f2f2f2/333.jpg&text=Artwork+1",
+      "medium": "Oil on linen",
+      "dimensions": "120 x 90 cm",
+      "year": "2026",
+      "edition": "Unique",
+      "price": "$6,500",
+      "status": "Available"
+    },
+    {
+      "title": "Window Circuit",
+      "image": "https://dummyimage.com/700x900/e8e8e8/333.jpg&text=Artwork+2",
+      "medium": "Mixed media on panel",
+      "dimensions": "100 x 80 cm",
+      "year": "2025",
+      "edition": "1/3 + 1 AP",
+      "price": "$4,200",
+      "status": "Reserved"
+    },
+    {
+      "title": "Afterimage for a Corridor",
+      "image": "https://dummyimage.com/700x900/dfdfdf/333.jpg&text=Artwork+3",
+      "medium": "Acrylic and graphite on canvas",
+      "dimensions": "150 x 110 cm",
+      "year": "2026",
+      "edition": "Unique",
+      "price": "$8,900",
+      "status": "Available"
+    }
+  ]
+}
